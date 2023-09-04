@@ -206,6 +206,8 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 	 * JSR-330's {@link jakarta.inject.Named} annotations (as well as their
 	 * pre-Jakarta {@code javax.annotation.ManagedBean} and {@code javax.inject.Named}
 	 * equivalents), if available.
+	 * 注册一个缺省的过滤器Filter，缺省的Filter会检查所有有以下几种注解的类
+	 * @Component、@Repository、 @Service、 @Controller、 @ManagedBean、@Named
 	 */
 	@SuppressWarnings("unchecked")
 	protected void registerDefaultFilters() {

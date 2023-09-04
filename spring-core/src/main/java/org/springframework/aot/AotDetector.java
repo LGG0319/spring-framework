@@ -47,6 +47,8 @@ public abstract class AotDetector {
 	 * is mandatory in a native image but can be triggered on the JVM using
 	 * the {@value #AOT_ENABLED} Spring property.
 	 * @return whether AOT optimizations must be considered
+	 * 确定是否必须在运行时考虑AOT优化。这在本机映像中是强制性的，但可以在JVM上使用“spring.aot.enabled”spring属性触发。
+	 * 是否必须考虑AOT优化
 	 */
 	public static boolean useGeneratedArtifacts() {
 		return (inNativeImage || SpringProperties.getFlag(AOT_ENABLED));

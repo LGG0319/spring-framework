@@ -66,6 +66,8 @@ public class AnnotatedBeanDefinitionReader {
 	 * in the form of a {@code BeanDefinitionRegistry}
 	 * @see #AnnotatedBeanDefinitionReader(BeanDefinitionRegistry, Environment)
 	 * @see #setEnvironment(Environment)
+	 *  创建一个新的AnnotatedBeanDefinitionReader，如果这个registry是EnvironmentCapable的子类，
+	 *  比如是一个ApplicationContext，那么Environment将从这个ApplicationContext继承
 	 */
 	public AnnotatedBeanDefinitionReader(BeanDefinitionRegistry registry) {
 		this(registry, getOrCreateEnvironment(registry));
@@ -79,12 +81,16 @@ public class AnnotatedBeanDefinitionReader {
 	 * @param environment the {@code Environment} to use when evaluating bean definition
 	 * profiles.
 	 * @since 3.1
+	 * 用registry和environment来创建一个新的AnnotatedBeanDefinitionReader
 	 */
 	public AnnotatedBeanDefinitionReader(BeanDefinitionRegistry registry, Environment environment) {
 		Assert.notNull(registry, "BeanDefinitionRegistry must not be null");
 		Assert.notNull(environment, "Environment must not be null");
+		// 注册内置BeanPostProcessor；注册相关BeanDefinition；
 		this.registry = registry;
+		// 推断ApplicationContext所需要的BeanFactory，Classloader等
 		this.conditionEvaluator = new ConditionEvaluator(registry, environment, null);
+		// 注册内置BeanPostProcessor；注册相关BeanDefinition
 		AnnotationConfigUtils.registerAnnotationConfigProcessors(this.registry);
 	}
 
@@ -299,6 +305,7 @@ public class AnnotatedBeanDefinitionReader {
 	/**
 	 * Get the Environment from the given registry if possible, otherwise return a new
 	 * StandardEnvironment.
+	 * 从给的的BeanDefinitionRegistry获取系统环境信息
 	 */
 	private static Environment getOrCreateEnvironment(BeanDefinitionRegistry registry) {
 		Assert.notNull(registry, "BeanDefinitionRegistry must not be null");

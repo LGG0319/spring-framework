@@ -44,6 +44,7 @@ import org.springframework.util.MultiValueMap;
  * @author Phillip Webb
  * @author Juergen Hoeller
  * @since 4.0
+ * @Conditional 解析处理
  */
 class ConditionEvaluator {
 
@@ -160,9 +161,13 @@ class ConditionEvaluator {
 				@Nullable Environment environment, @Nullable ResourceLoader resourceLoader) {
 
 			this.registry = registry;
+			// 推断哪种beanFactory
 			this.beanFactory = deduceBeanFactory(registry);
+			// 推断哪种environment
 			this.environment = (environment != null ? environment : deduceEnvironment(registry));
+			// 推断哪种resourceLoader
 			this.resourceLoader = (resourceLoader != null ? resourceLoader : deduceResourceLoader(registry));
+			// 推断哪种classLoader
 			this.classLoader = deduceClassLoader(resourceLoader, this.beanFactory);
 		}
 

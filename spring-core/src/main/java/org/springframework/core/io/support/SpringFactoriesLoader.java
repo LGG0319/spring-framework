@@ -324,6 +324,7 @@ public class SpringFactoriesLoader {
 	 * @see #forResourceLocation(String)
 	 */
 	public static SpringFactoriesLoader forResourceLocation(String resourceLocation, @Nullable ClassLoader classLoader) {
+		// resourceLocation配置文件不能为空
 		Assert.hasText(resourceLocation, "'resourceLocation' must not be empty");
 		ClassLoader resourceClassLoader = (classLoader != null ? classLoader :
 				SpringFactoriesLoader.class.getClassLoader());

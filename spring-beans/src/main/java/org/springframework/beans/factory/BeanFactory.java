@@ -74,21 +74,21 @@ import org.springframework.lang.Nullable;
  * <li>EmbeddedValueResolverAware's {@code setEmbeddedValueResolver} (嵌入式值解析器感知) 5.  解析 ${}
  * <li>ResourceLoaderAware's {@code setResourceLoader} 6. 获取资源加载器,实现该接口的备案可以获得外部资源文件
  * (only applicable when running in an application context)
- * <li>ApplicationEventPublisherAware's {@code setApplicationEventPublisher}
+ * <li>ApplicationEventPublisherAware's {@code setApplicationEventPublisher}  7. 事件的发布监听
  * (only applicable when running in an application context)
- * <li>MessageSourceAware's {@code setMessageSource}
+ * <li>MessageSourceAware's {@code setMessageSource}  8. 由任何希望收到通知的对象来实现,支持参数化以及这些信息的国际化。
  * (only applicable when running in an application context)
- * <li>ApplicationContextAware's {@code setApplicationContext}
+ * <li>ApplicationContextAware's {@code setApplicationContext} 9.与beanFactoryAware类似，范围比BeanFactory大，功能更细
  * (only applicable when running in an application context)
- * <li>ServletContextAware's {@code setServletContext}
+ * <li>ServletContextAware's {@code setServletContext}  10.设置servletContext环境，在web环境中
  * (only applicable when running in a web application context)
- * <li>{@code postProcessBeforeInitialization} methods of BeanPostProcessors
- * <li>InitializingBean's {@code afterPropertiesSet}
- * <li>a custom {@code init-method} definition
- * <li>{@code postProcessAfterInitialization} methods of BeanPostProcessors
+ * <li>{@code postProcessBeforeInitialization} methods of BeanPostProcessors 11.执行postProcess，初始化之前
+ * <li>InitializingBean's {@code afterPropertiesSet}  12.初始化bean,在属性设置完成之后
+ * <li>a custom {@code init-method} definition  13. 执行自定义初始化方法
+ * <li>{@code postProcessAfterInitialization} methods of BeanPostProcessors  14.执行postProcess，初始化之后
  * </ol>
  *
- * <p>On shutdown of a bean factory, the following lifecycle methods apply:
+ * <p>On shutdown of a bean factory, the following lifecycle methods apply: 15.关闭容器，销毁对象
  * <ol>
  * <li>{@code postProcessBeforeDestruction} methods of DestructionAwareBeanPostProcessors
  * <li>DisposableBean's {@code destroy}
