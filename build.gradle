@@ -11,6 +11,11 @@ plugins {
 	id 'me.champeau.mrjar' version '0.1.1'
 }
 
+repositories {
+	maven {url 'https://maven.aliyun.com/repository/public/'}
+}
+
+
 ext {
 	moduleProjects = subprojects.findAll { it.name.startsWith("spring-") }
 	javaProjects = subprojects.findAll { !it.name.startsWith("framework-") }
