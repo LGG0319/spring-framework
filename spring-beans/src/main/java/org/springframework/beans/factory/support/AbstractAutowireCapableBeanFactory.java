@@ -609,6 +609,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			//处理InstantiationAwareBeanPostProcessor的postProcessAfterInstantiation
 			populateBean(beanName, mbd, instanceWrapper);
 			//初始化Bean -- 包含处理 BeanPostProcessor的实现以及init方法
+			exposedObject = initializeBean(beanName, exposedObject, mbd);
 		}
 		catch (Throwable ex) {
 			if (ex instanceof BeanCreationException bce && beanName.equals(bce.getBeanName())) {
