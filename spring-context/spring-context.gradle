@@ -12,7 +12,7 @@ dependencies {
 	api(project(":spring-core"))
 	api(project(":spring-expression"))
 	api("io.micrometer:micrometer-observation")
-	optional(project(":spring-instrument"))
+	implementation(project(":spring-instrument"))
 	optional("io.projectreactor:reactor-core")
 	optional("jakarta.annotation:jakarta.annotation-api")
 	optional("jakarta.ejb:jakarta.ejb-api")
