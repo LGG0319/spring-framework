@@ -24,6 +24,7 @@ package org.springframework.core.metrics;
  *
  * @author Brian Clozel
  * @since 5.3
+ * 记录ApplicationStartup期间发生的特定阶段或动作的指标。 实现可以跟踪步骤的“执行时间”或其他指标。
  */
 public interface ApplicationStartup {
 

@@ -37,6 +37,8 @@ import org.springframework.beans.BeansException;
  * @see BeanClassLoaderAware
  * @see InitializingBean
  * @see org.springframework.context.ApplicationContextAware
+ * 用于在bean实例化后将beanfactory注入到bean中，
+ * 实现该接口，可以在实例化后获取beanfactory，从而在运行过程中动态的获取其他bean的实例
  */
 public interface BeanFactoryAware extends Aware {
 

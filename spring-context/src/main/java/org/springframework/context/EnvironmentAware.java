@@ -26,6 +26,7 @@ import org.springframework.core.env.Environment;
  * @author Chris Beams
  * @since 3.1
  * @see org.springframework.core.env.EnvironmentCapable
+ * 设置/获取到系统环境变量和application配置文件中的变量
  */
 public interface EnvironmentAware extends Aware {
 

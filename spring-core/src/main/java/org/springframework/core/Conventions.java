@@ -33,6 +33,7 @@ import org.springframework.util.ClassUtils;
  * @author Juergen Hoeller
  * @author Rossen Stoyanchev
  * @since 2.0
+ * 提供方法以支持使用的各种命名和其他约定整个框架。主要用于框架内部使用。
  */
 public final class Conventions {
 

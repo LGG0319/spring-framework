@@ -86,10 +86,14 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 	 * from the given component classes and automatically refreshing the context.
 	 * @param componentClasses one or more component classes &mdash; for example,
 	 * {@link Configuration @Configuration} classes
+	 * 创建AnnotationConfigApplicationContext，
+	 * 解析class成BeanDefinition然后保存BeanDefinition,并刷新context
 	 */
 	public AnnotationConfigApplicationContext(Class<?>... componentClasses) {
 		this();
+		// 根据配置类注册BeanDefinition（注册的是我们的配置类对象）
 		register(componentClasses);
+        // 用于刷新整个Spring 上下文信息，定义了整个 Spring 上下文加载的流程。
 		refresh();
 	}
 
@@ -159,13 +163,19 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 	 * {@link Configuration @Configuration} classes
 	 * @see #scan(String...)
 	 * @see #refresh()
+	 * 	// 注册一个或多个要处理的组件类(配置类)，
+	 * 	// 解析class成BeanDefinition然后保存BeanDefinition
+	 * 	// 并且要调用refresh才能活得context
 	 */
 	@Override
 	public void register(Class<?>... componentClasses) {
 		Assert.notEmpty(componentClasses, "At least one component class must be specified");
+		// 创建spring启动的第一个步骤 (解析class成BeanDefinition然后保存BeanDefinition)
 		StartupStep registerComponentClass = getApplicationStartup().start("spring.context.component-classes.register")
 				.tag("classes", () -> Arrays.toString(componentClasses));
+		// 解析class成BeanDefinition然后保存BeanDefinition
 		this.reader.register(componentClasses);
+		// 步骤结束
 		registerComponentClass.end();
 	}
 

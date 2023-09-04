@@ -32,6 +32,8 @@ package org.springframework.beans.factory;
  * @see BeanClassLoaderAware
  * @see BeanFactoryAware
  * @see InitializingBean
+ * 在创建该bean的bean工厂中设置该bean的名称。
+ * 在填充普通bean属性之后，在属性之前调用
  */
 public interface BeanNameAware extends Aware {
 

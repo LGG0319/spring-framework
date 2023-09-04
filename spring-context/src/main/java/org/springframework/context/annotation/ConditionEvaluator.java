@@ -76,12 +76,17 @@ class ConditionEvaluator {
 	 * @param metadata the meta data
 	 * @param phase the phase of the call
 	 * @return if the item should be skipped
+	 * 判断是否应该解析配置类，并将配置类中包含的class解析为BeanDefinition
 	 */
 	public boolean shouldSkip(@Nullable AnnotatedTypeMetadata metadata, @Nullable ConfigurationPhase phase) {
+		// 判断配置类上是否有注解@Conditional,没有时跳过，不解析class为BeanDefinition
 		if (metadata == null || !metadata.isAnnotated(Conditional.class.getName())) {
 			return false;
 		}
 
+		// 判断是否为配置候选, 不是的跳过
+		// 1.有@Component、@ComponentScan、@Import、@ImportResource 时为ture
+		// 2.有@Bean的方法为true
 		if (phase == null) {
 			if (metadata instanceof AnnotationMetadata annotationMetadata &&
 					ConfigurationClassUtils.isConfigurationCandidate(annotationMetadata)) {
@@ -91,15 +96,21 @@ class ConditionEvaluator {
 		}
 
 		List<Condition> conditions = new ArrayList<>();
+		//获取metadata中的Conditional注解里面的所有value(这里就是CustomConditionalImpl)的全类名
 		for (String[] conditionClasses : getConditionClasses(metadata)) {
+			//遍历，然后通过全类名和类加载器，
+			// 反射拿到Condition 实例(这里就是CustomConditionalImpl)，加入到conditions集合
 			for (String conditionClass : conditionClasses) {
 				Condition condition = getCondition(conditionClass, this.context.getClassLoader());
 				conditions.add(condition);
 			}
 		}
-
+		//排序
 		AnnotationAwareOrderComparator.sort(conditions);
 
+		//遍历condition集合，判断condition实例是否有实现ConfigurationCondition这个接口，
+		// 如果有，就拿到重写的ConfigurationCondition接口的getConfigurationPhase()
+		// 方法的ConfigurationPhase。
 		for (Condition condition : conditions) {
 			ConfigurationPhase requiredPhase = null;
 			if (condition instanceof ConfigurationCondition configurationCondition) {
@@ -113,6 +124,7 @@ class ConditionEvaluator {
 		return false;
 	}
 
+	// 获取@Conditional注解上的所有注解
 	@SuppressWarnings("unchecked")
 	private List<String[]> getConditionClasses(AnnotatedTypeMetadata metadata) {
 		MultiValueMap<String, Object> attributes = metadata.getAllAnnotationAttributes(Conditional.class.getName(), true);

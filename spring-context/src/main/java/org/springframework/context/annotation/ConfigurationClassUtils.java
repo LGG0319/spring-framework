@@ -63,13 +63,16 @@ public abstract class ConfigurationClassUtils {
 	 * <p>For example, a class registered directly with an {@code ApplicationContext}
 	 * should always be considered a configuration class candidate.
 	 * @since 6.0.10
+	 * 候选属性  org.springframework.context.annotation.candidate
 	 */
 	static final String CANDIDATE_ATTRIBUTE =
 			Conventions.getQualifiedAttributeName(ConfigurationClassPostProcessor.class, "candidate");
 
+	// 配置类属性 org.springframework.context.annotation.configurationClass
 	static final String CONFIGURATION_CLASS_ATTRIBUTE =
 			Conventions.getQualifiedAttributeName(ConfigurationClassPostProcessor.class, "configurationClass");
 
+	// 顺序属性 org.springframework.context.annotation.order
 	static final String ORDER_ATTRIBUTE =
 			Conventions.getQualifiedAttributeName(ConfigurationClassPostProcessor.class, "order");
 
@@ -170,6 +173,9 @@ public abstract class ConfigurationClassUtils {
 	 * @param metadata the metadata of the annotated class
 	 * @return {@code true} if the given class is to be registered for
 	 * configuration class processing; {@code false} otherwise
+	 * 判断是否为配置候选
+	 * 1.有@Component、@ComponentScan、@Import、@ImportResource 时为ture
+	 * 2.有@Bean的方法为true
 	 */
 	static boolean isConfigurationCandidate(AnnotationMetadata metadata) {
 		// Do not consider an interface or an annotation...

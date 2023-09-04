@@ -67,12 +67,12 @@ import org.springframework.lang.Nullable;
  * <p>Bean factory implementations should support the standard bean lifecycle interfaces
  * as far as possible. The full set of initialization methods and their standard order is:
  * <ol>
- * <li>BeanNameAware's {@code setBeanName}
- * <li>BeanClassLoaderAware's {@code setBeanClassLoader}
- * <li>BeanFactoryAware's {@code setBeanFactory}
- * <li>EnvironmentAware's {@code setEnvironment}
- * <li>EmbeddedValueResolverAware's {@code setEmbeddedValueResolver}
- * <li>ResourceLoaderAware's {@code setResourceLoader}
+ * <li>BeanNameAware's {@code setBeanName}   1. 设置Bean名称 在创建该bean的bean工厂中设置该bean的名称。在填充普通bean属性之后，在属性之前调用
+ * <li>BeanClassLoaderAware's {@code setBeanClassLoader}  2. 提供bean工厂来加载bean类
+ * <li>BeanFactoryAware's {@code setBeanFactory} 3. 在bean实例化后将beanfactory注入到bean中，实现该接口，从而在运行过程中动态的获取其他bean的实例
+ * <li>EnvironmentAware's {@code setEnvironment}  4.获取到系统环境变量和application配置文件中的变量。
+ * <li>EmbeddedValueResolverAware's {@code setEmbeddedValueResolver} (嵌入式值解析器感知) 5.  解析 ${}
+ * <li>ResourceLoaderAware's {@code setResourceLoader} 6. 获取资源加载器,实现该接口的备案可以获得外部资源文件
  * (only applicable when running in an application context)
  * <li>ApplicationEventPublisherAware's {@code setApplicationEventPublisher}
  * (only applicable when running in an application context)
@@ -116,6 +116,7 @@ import org.springframework.lang.Nullable;
  * @see org.springframework.beans.factory.config.DestructionAwareBeanPostProcessor#postProcessBeforeDestruction
  * @see DisposableBean#destroy
  * @see org.springframework.beans.factory.support.RootBeanDefinition#getDestroyMethodName
+ * Spring bean容器的根接口
  */
 public interface BeanFactory {
 

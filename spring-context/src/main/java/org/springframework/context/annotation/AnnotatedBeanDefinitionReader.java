@@ -131,6 +131,7 @@ public class AnnotatedBeanDefinitionReader {
 	 * component class more than once has no additional effect.
 	 * @param componentClasses one or more component classes,
 	 * e.g. {@link Configuration @Configuration} classes
+	 * 根据配置获取其中的bean，并解析class成BeanDefinition然后保存BeanDefinition
 	 */
 	public void register(Class<?>... componentClasses) {
 		for (Class<?> componentClass : componentClasses) {
@@ -142,6 +143,7 @@ public class AnnotatedBeanDefinitionReader {
 	 * Register a bean from the given bean class, deriving its metadata from
 	 * class-declared annotations.
 	 * @param beanClass the class of the bean
+	 * 根基配置能获取其中的bean，并解析class成BeanDefinition然后保存BeanDefinition
 	 */
 	public void registerBean(Class<?> beanClass) {
 		doRegisterBean(beanClass, null, null, null, null);
@@ -245,24 +247,28 @@ public class AnnotatedBeanDefinitionReader {
 	 * @param customizers one or more callbacks for customizing the factory's
 	 * {@link BeanDefinition}, e.g. setting a lazy-init or primary flag
 	 * @since 5.0
+	 * 解析class成BeanDefinition然后保存BeanDefinition
 	 */
 	private <T> void doRegisterBean(Class<T> beanClass, @Nullable String name,
 			@Nullable Class<? extends Annotation>[] qualifiers, @Nullable Supplier<T> supplier,
 			@Nullable BeanDefinitionCustomizer[] customizers) {
 
+		// 根据传入配置信息（配置类）判断是否需要解析class为BeanDefinition,不需要则跳过
 		AnnotatedGenericBeanDefinition abd = new AnnotatedGenericBeanDefinition(beanClass);
 		if (this.conditionEvaluator.shouldSkip(abd.getMetadata())) {
 			return;
 		}
 
+		// 设置候选属性为true
 		abd.setAttribute(ConfigurationClassUtils.CANDIDATE_ATTRIBUTE, Boolean.TRUE);
 		abd.setInstanceSupplier(supplier);
+		// 解析@Scope注解
 		ScopeMetadata scopeMetadata = this.scopeMetadataResolver.resolveScopeMetadata(abd);
 		abd.setScope(scopeMetadata.getScopeName());
 		String beanName = (name != null ? name : this.beanNameGenerator.generateBeanName(abd, this.registry));
-
+		// 处理beanDefinition中通用注解 @Lazy、@Primary、@DependsOn、@Role、@Description
 		AnnotationConfigUtils.processCommonDefinitionAnnotations(abd);
-		if (qualifiers != null) {
+		if (qualifiers != null) {  // @Qualifier特殊限定符处理
 			for (Class<? extends Annotation> qualifier : qualifiers) {
 				if (Primary.class == qualifier) {
 					abd.setPrimary(true);
@@ -275,14 +281,17 @@ public class AnnotatedBeanDefinitionReader {
 				}
 			}
 		}
+		// 处理applicationcontext容器加载完成后手动registerBean
 		if (customizers != null) {
 			for (BeanDefinitionCustomizer customizer : customizers) {
 				customizer.customize(abd);
 			}
 		}
-
+		// 将beanName和AnnotatedGenericBeanDefinition封装在BeanDefinitionHolder中
 		BeanDefinitionHolder definitionHolder = new BeanDefinitionHolder(abd, beanName);
+		// 创建代理对象
 		definitionHolder = AnnotationConfigUtils.applyScopedProxyMode(scopeMetadata, definitionHolder, this.registry);
+		// 将BeanDefinition注册到BeanDefinitionMap中
 		BeanDefinitionReaderUtils.registerBeanDefinition(definitionHolder, this.registry);
 	}
 

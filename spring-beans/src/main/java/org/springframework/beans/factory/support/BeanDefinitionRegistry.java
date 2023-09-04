@@ -44,6 +44,10 @@ import org.springframework.core.AliasRegistry;
  * @see org.springframework.context.support.GenericApplicationContext
  * @see org.springframework.beans.factory.xml.XmlBeanDefinitionReader
  * @see PropertiesBeanDefinitionReader
+ * 保存bean定义的注册中心接口，例如RootBeanDefinition
+ * 和ChildBeanDefinition实例。通常由BeanFactories实现
+ * 内部使用AbstractBeanDefinition层次结构。
+ * 这是Spring的bean工厂包中唯一封装的接口
  */
 public interface BeanDefinitionRegistry extends AliasRegistry {
 

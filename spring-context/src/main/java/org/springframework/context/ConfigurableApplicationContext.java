@@ -205,6 +205,7 @@ public interface ConfigurableApplicationContext extends ApplicationContext, Life
 	 * @throws BeansException if the bean factory could not be initialized
 	 * @throws IllegalStateException if already initialized and multiple refresh
 	 * attempts are not supported
+	 * 加载或刷新配置
 	 */
 	void refresh() throws BeansException, IllegalStateException;
 

@@ -57,6 +57,7 @@ public interface AnnotatedTypeMetadata {
 	 * of the underlying element.
 	 * @return merged annotations based on the direct annotations and meta-annotations
 	 * @since 5.2
+	 * 获取类中所有注解，包括注解上的注解
 	 */
 	MergedAnnotations getAnnotations();
 

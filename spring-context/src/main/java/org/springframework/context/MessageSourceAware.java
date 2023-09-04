@@ -31,6 +31,7 @@ import org.springframework.beans.factory.Aware;
  * @author Chris Beams
  * @since 1.1.1
  * @see ApplicationContextAware
+ * 由任何希望收到通知的对象来实现,支持参数化以及这些信息的国际化。
  */
 public interface MessageSourceAware extends Aware {
 

@@ -31,6 +31,7 @@ package org.springframework.beans.factory;
  * @author Chris Beams
  * @author Juergen Hoeller
  * @since 3.1
+ * 通过aware接口可以获取Spring容器相关信息，但这样会与Spring容器耦合。
  */
 public interface Aware {
 

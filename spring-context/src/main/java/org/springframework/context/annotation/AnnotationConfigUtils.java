@@ -230,6 +230,7 @@ public abstract class AnnotationConfigUtils {
 	}
 
 	static void processCommonDefinitionAnnotations(AnnotatedBeanDefinition abd, AnnotatedTypeMetadata metadata) {
+		//如果Bean定义中有@Lazy注解，则将该Bean预实例化属性设置为@lazy注解的值
 		AnnotationAttributes lazy = attributesFor(metadata, Lazy.class);
 		if (lazy != null) {
 			abd.setLazyInit(lazy.getBoolean("value"));
@@ -240,19 +241,22 @@ public abstract class AnnotationConfigUtils {
 				abd.setLazyInit(lazy.getBoolean("value"));
 			}
 		}
-
+		//如果Bean定义中有@Primary注解，则为该Bean设置为autowiring自动依赖注入装配的首选对象
 		if (metadata.isAnnotated(Primary.class.getName())) {
 			abd.setPrimary(true);
 		}
+		//如果Bean定义中有@DependsOn注解，则为该Bean设置所依赖的Bean名称，
+		//容器将确保在实例化该Bean之前首先实例化所依赖的Bean
 		AnnotationAttributes dependsOn = attributesFor(metadata, DependsOn.class);
 		if (dependsOn != null) {
 			abd.setDependsOn(dependsOn.getStringArray("value"));
 		}
-
+		// 解析Bean定义中@Role注解，为关联的bean设置角色提示
 		AnnotationAttributes role = attributesFor(metadata, Role.class);
 		if (role != null) {
 			abd.setRole(role.getNumber("value").intValue());
 		}
+		// 解析Bean定义中@Description注解，为bean定义添加文本描述
 		AnnotationAttributes description = attributesFor(metadata, Description.class);
 		if (description != null) {
 			abd.setDescription(description.getString("value"));

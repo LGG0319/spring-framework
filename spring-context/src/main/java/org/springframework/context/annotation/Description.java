@@ -29,6 +29,7 @@ import java.lang.annotation.Target;
  * @author Juergen Hoeller
  * @since 4.0
  * @see org.springframework.beans.factory.config.BeanDefinition#getDescription()
+ * 向派生自的bean定义添加文本描述
  */
 @Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)

@@ -56,6 +56,7 @@ public @interface Role {
 	 * @see BeanDefinition#ROLE_APPLICATION
 	 * @see BeanDefinition#ROLE_INFRASTRUCTURE
 	 * @see BeanDefinition#ROLE_SUPPORT
+	 * 为关联的bean设置角色提示
 	 */
 	int value();
 

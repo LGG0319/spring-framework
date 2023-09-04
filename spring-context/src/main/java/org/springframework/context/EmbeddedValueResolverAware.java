@@ -32,6 +32,7 @@ import org.springframework.util.StringValueResolver;
  * @see org.springframework.beans.factory.config.ConfigurableBeanFactory#resolveEmbeddedValue(String)
  * @see org.springframework.beans.factory.config.ConfigurableBeanFactory#getBeanExpressionResolver()
  * @see org.springframework.beans.factory.config.EmbeddedValueResolver
+ * 解析${} 类似于@Value("${name}")
  */
 public interface EmbeddedValueResolverAware extends Aware {
 
