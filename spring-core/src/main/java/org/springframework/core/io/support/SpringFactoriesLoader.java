@@ -546,6 +546,7 @@ public class SpringFactoriesLoader {
 		 * with the given resolver.
 		 * @param argumentResolver the argument resolver to add
 		 * @return a new composite {@link ArgumentResolver} instance
+		 * 添加一个解析指定类型的参数解析器
 		 */
 		default ArgumentResolver and(ArgumentResolver argumentResolver) {
 			return from(type -> {
@@ -570,6 +571,7 @@ public class SpringFactoriesLoader {
 		 * @param type the argument type
 		 * @param value the argument value
 		 * @return a new {@link ArgumentResolver} instance
+		 * 创建一个解析指定类型的 ArgumentResolver
 		 */
 		static <T> ArgumentResolver of(Class<T> type, T value) {
 			return ofSupplied(type, () -> value);
