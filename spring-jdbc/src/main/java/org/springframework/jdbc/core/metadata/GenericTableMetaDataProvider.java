@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2021 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,6 +77,8 @@ public class GenericTableMetaDataProvider implements TableMetaDataProvider {
 	/** Collection of TableParameterMetaData objects. */
 	private final List<TableParameterMetaData> tableParameterMetaData = new ArrayList<>();
 
+	/** The string used to quote SQL identifiers. */
+	private String identifierQuoteString = " ";
 
 	/**
 	 * Constructor used to initialize with provided database meta-data.
@@ -158,7 +160,7 @@ public class GenericTableMetaDataProvider implements TableMetaDataProvider {
 		}
 		catch (SQLException ex) {
 			if (logger.isWarnEnabled()) {
-				logger.warn("Error retrieving 'DatabaseMetaData.getGeneratedKeys': " + ex.getMessage());
+				logger.warn("Error retrieving 'DatabaseMetaData.supportsGetGeneratedKeys': " + ex.getMessage());
 			}
 		}
 		try {
@@ -213,6 +215,15 @@ public class GenericTableMetaDataProvider implements TableMetaDataProvider {
 				logger.warn("Error retrieving 'DatabaseMetaData.storesLowerCaseIdentifiers': " + ex.getMessage());
 			}
 		}
+
+		try {
+			this.identifierQuoteString = databaseMetaData.getIdentifierQuoteString();
+		}
+		catch (SQLException ex) {
+			if (logger.isWarnEnabled()) {
+				logger.warn("Error retrieving 'DatabaseMetaData.getIdentifierQuoteString': " + ex.getMessage());
+			}
+		}
 	}
 
 	@Override
@@ -226,51 +237,39 @@ public class GenericTableMetaDataProvider implements TableMetaDataProvider {
 	@Override
 	@Nullable
 	public String tableNameToUse(@Nullable String tableName) {
-		if (tableName == null) {
-			return null;
-		}
-		else if (isStoresUpperCaseIdentifiers()) {
-			return tableName.toUpperCase();
-		}
-		else if (isStoresLowerCaseIdentifiers()) {
-			return tableName.toLowerCase();
-		}
-		else {
-			return tableName;
-		}
+		return identifierNameToUse(tableName);
+	}
+
+	@Override
+	@Nullable
+	public String columnNameToUse(@Nullable String columnName) {
+		return identifierNameToUse(columnName);
 	}
 
 	@Override
 	@Nullable
 	public String catalogNameToUse(@Nullable String catalogName) {
-		if (catalogName == null) {
-			return null;
-		}
-		else if (isStoresUpperCaseIdentifiers()) {
-			return catalogName.toUpperCase();
-		}
-		else if (isStoresLowerCaseIdentifiers()) {
-			return catalogName.toLowerCase();
-		}
-		else {
-			return catalogName;
-		}
+		return identifierNameToUse(catalogName);
 	}
 
 	@Override
 	@Nullable
 	public String schemaNameToUse(@Nullable String schemaName) {
-		if (schemaName == null) {
+		return identifierNameToUse(schemaName);
+	}
+
+	private String identifierNameToUse(String identifierName) {
+		if (identifierName == null) {
 			return null;
 		}
 		else if (isStoresUpperCaseIdentifiers()) {
-			return schemaName.toUpperCase();
+			return identifierName.toUpperCase();
 		}
 		else if (isStoresLowerCaseIdentifiers()) {
-			return schemaName.toLowerCase();
+			return identifierName.toLowerCase();
 		}
 		else {
-			return schemaName;
+			return identifierName;
 		}
 	}
 
@@ -290,7 +289,7 @@ public class GenericTableMetaDataProvider implements TableMetaDataProvider {
 	}
 
 	/**
-	 * Provide access to default schema for subclasses.
+	 * Provide access to the default schema for subclasses.
 	 */
 	@Nullable
 	protected String getDefaultSchema() {
@@ -298,11 +297,21 @@ public class GenericTableMetaDataProvider implements TableMetaDataProvider {
 	}
 
 	/**
-	 * Provide access to version info for subclasses.
+	 * Provide access to the version info for subclasses.
 	 */
 	@Nullable
 	protected String getDatabaseVersion() {
 		return this.databaseVersion;
+	}
+
+	/**
+	 * Provide access to the identifier quote string.
+	 * @since 6.1
+	 * @see java.sql.DatabaseMetaData#getIdentifierQuoteString()
+	 */
+	@Override
+	public String getIdentifierQuoteString() {
+		return this.identifierQuoteString;
 	}
 
 	/**
