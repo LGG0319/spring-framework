@@ -76,6 +76,7 @@ fun <T : Any> ServerRequest.bodyToFlow(clazz: KClass<T>): Flow<T> =
 /**
  * Non-nullable Coroutines variant of [ServerRequest.bodyToMono].
  *
+ * @throws NoSuchElementException if the underlying [Mono] does not emit any value
  * @author Sebastien Deleuze
  * @since 5.2
  */
@@ -86,6 +87,7 @@ suspend inline fun <reified T : Any> ServerRequest.awaitBody(): T =
  * `KClass` non-nullable Coroutines variant of [ServerRequest.bodyToMono].
  * Please consider `awaitBody<Foo>` variant if possible.
  *
+ * @throws NoSuchElementException if the underlying [Mono] does not emit any value
  * @author Igor Manushin
  * @since 5.3
  */
@@ -98,7 +100,6 @@ suspend fun <T : Any> ServerRequest.awaitBody(clazz: KClass<T>): T =
  * @author Sebastien Deleuze
  * @since 5.2
  */
-@Suppress("DEPRECATION")
 suspend inline fun <reified T : Any> ServerRequest.awaitBodyOrNull(): T? =
 		bodyToMono<T>().awaitSingleOrNull()
 
@@ -109,7 +110,6 @@ suspend inline fun <reified T : Any> ServerRequest.awaitBodyOrNull(): T? =
  * @author Igor Manushin
  * @since 5.3
  */
-@Suppress("DEPRECATION")
 suspend fun <T : Any> ServerRequest.awaitBodyOrNull(clazz: KClass<T>): T? =
 		bodyToMono(clazz.java).awaitSingleOrNull()
 
@@ -137,7 +137,6 @@ suspend fun ServerRequest.awaitMultipartData(): MultiValueMap<String, Part> =
  * @author Sebastien Deleuze
  * @since 5.2
  */
-@Suppress("DEPRECATION")
 suspend fun ServerRequest.awaitPrincipal(): Principal? =
 		principal().awaitSingleOrNull()
 

@@ -102,7 +102,6 @@ inline fun <reified T : Any> RSocketRequester.RequestSpec.dataWithType(flow: Flo
  * @author Sebastien Deleuze
  * @since 5.2
  */
-@Suppress("DEPRECATION")
 suspend fun RSocketRequester.RetrieveSpec.sendAndAwait() {
 	send().awaitSingleOrNull()
 }
@@ -110,6 +109,7 @@ suspend fun RSocketRequester.RetrieveSpec.sendAndAwait() {
 /**
  * Coroutines variant of [RSocketRequester.RetrieveSpec.retrieveMono].
  *
+ * @throws NoSuchElementException if the underlying [Mono] does not emit any value
  * @author Sebastien Deleuze
  * @since 5.2
  */
@@ -122,7 +122,6 @@ suspend inline fun <reified T : Any> RSocketRequester.RetrieveSpec.retrieveAndAw
  * @author Sebastien Deleuze
  * @since 5.2.1
  */
-@Suppress("DEPRECATION")
 suspend inline fun <reified T : Any> RSocketRequester.RetrieveSpec.retrieveAndAwaitOrNull(): T? =
 		retrieveMono(object : ParameterizedTypeReference<T>() {}).awaitSingleOrNull()
 

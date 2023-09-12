@@ -95,7 +95,6 @@ suspend fun <T: Any> RequestHeadersSpec<out RequestHeadersSpec<*>>.awaitExchange
  *
  * @since 5.3.8
  */
-@Suppress("DEPRECATION")
 suspend fun <T: Any> RequestHeadersSpec<out RequestHeadersSpec<*>>.awaitExchangeOrNull(responseHandler: suspend (ClientResponse) -> T?): T? =
 		exchangeToMono { mono(Dispatchers.Unconfined) { responseHandler.invoke(it) } }.awaitSingleOrNull()
 
@@ -143,6 +142,7 @@ inline fun <reified T : Any> WebClient.ResponseSpec.bodyToFlow(): Flow<T> =
 /**
  * Coroutines variant of [WebClient.ResponseSpec.bodyToMono].
  *
+ * @throws NoSuchElementException if the underlying [Mono] does not emit any value
  * @author Sebastien Deleuze
  * @since 5.2
  */
@@ -158,7 +158,6 @@ suspend inline fun <reified T : Any> WebClient.ResponseSpec.awaitBody() : T =
  * @author Valentin Shakhov
  * @since 5.3.6
  */
-@Suppress("DEPRECATION")
 suspend inline fun <reified T : Any> WebClient.ResponseSpec.awaitBodyOrNull() : T? =
 	when (T::class) {
 		Unit::class -> awaitBodilessEntity().let { Unit as T? }

@@ -1,5 +1,5 @@
 plugins {
-	id 'io.freefair.aspectj' version '8.2.2' apply false
+	id 'io.freefair.aspectj' version '8.3' apply false
 	// kotlinVersion is managed in gradle.properties
 	id 'org.jetbrains.kotlin.plugin.serialization' version "${kotlinVersion}" apply false
 	id 'org.jetbrains.dokka' version '1.8.20'
@@ -23,6 +23,7 @@ ext {
 
 configure(allprojects) { project ->
 	apply plugin: "org.springframework.build.localdev"
+	group = "org.springframework"
 	repositories {
 		mavenCentral()
 		maven {
@@ -62,8 +63,6 @@ configure(allprojects - project(":framework-platform")) {
 }
 
 configure([rootProject] + javaProjects) { project ->
-	group = "org.springframework"
-
 	apply plugin: "java"
 	apply plugin: "java-test-fixtures"
 	apply plugin: 'org.springframework.build.conventions'
