@@ -55,14 +55,14 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
  */
 public abstract class AbstractWebSocketIntegrationTests {
 
-	private static Map<Class<?>, Class<?>> upgradeStrategyConfigTypes = Map.of(
-			JettyWebSocketTestServer.class, JettyUpgradeStrategyConfig.class, //
-			TomcatWebSocketTestServer.class, TomcatUpgradeStrategyConfig.class, //
+	private static final Map<Class<?>, Class<?>> upgradeStrategyConfigTypes = Map.of(
+			JettyWebSocketTestServer.class, JettyUpgradeStrategyConfig.class,
+			TomcatWebSocketTestServer.class, TomcatUpgradeStrategyConfig.class,
 			UndertowTestServer.class, UndertowUpgradeStrategyConfig.class);
 
-	@SuppressWarnings("removal")
 	static Stream<Arguments> argumentsFactory() {
 		return Stream.of(
+				arguments(named("Jetty", new JettyWebSocketTestServer()), named("Standard", new StandardWebSocketClient())),
 				arguments(named("Tomcat", new TomcatWebSocketTestServer()), named("Standard", new StandardWebSocketClient())),
 				arguments(named("Undertow", new UndertowTestServer()), named("Standard", new StandardWebSocketClient())));
 	}
@@ -112,7 +112,7 @@ public abstract class AbstractWebSocketIntegrationTests {
 	protected abstract Class<?>[] getAnnotatedConfigClasses();
 
 	@AfterEach
-	void teardown() throws Exception {
+	void teardown() {
 		try {
 			if (this.webSocketClient instanceof Lifecycle) {
 				((Lifecycle) this.webSocketClient).stop();
