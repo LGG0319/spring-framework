@@ -127,6 +127,7 @@ public interface ApplicationEventMulticaster {
 	 * @param eventType the type of event (can be {@code null})
 	 * @since 4.2
 	 * @see ApplicationListener#supportsAsyncExecution()
+	 * 将给定的应用程序事件多播到适当的侦听器
 	 */
 	void multicastEvent(ApplicationEvent event, @Nullable ResolvableType eventType);
 

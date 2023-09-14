@@ -93,6 +93,7 @@ public class EventPublicationInterceptor
 	}
 
 
+	// 执行监听器发布
 	@Override
 	@Nullable
 	public Object invoke(MethodInvocation invocation) throws Throwable {
@@ -103,6 +104,7 @@ public class EventPublicationInterceptor
 				this.applicationEventClassConstructor.newInstance(invocation.getThis());
 
 		Assert.state(this.applicationEventPublisher != null, "No ApplicationEventPublisher available");
+		// 发布事件到所有监听器
 		this.applicationEventPublisher.publishEvent(event);
 
 		return retVal;

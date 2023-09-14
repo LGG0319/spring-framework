@@ -364,6 +364,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 * implementations cannot publish events.
 	 * @param event the event to publish (may be application-specific or a
 	 * standard framework event)
+	 * 发布事件到所有监听器
 	 */
 	@Override
 	public void publishEvent(ApplicationEvent event) {
@@ -399,12 +400,14 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 * instead for such scenarios.
 	 * @since 4.2
 	 * @see ApplicationEventMulticaster#multicastEvent(ApplicationEvent, ResolvableType)
+	 * 将给定事件发布给所有侦听器
 	 */
 	protected void publishEvent(Object event, @Nullable ResolvableType typeHint) {
 		Assert.notNull(event, "Event must not be null");
 		ResolvableType eventType = null;
 
 		// Decorate event as an ApplicationEvent if necessary
+		// 如有必要，将事件装饰为ApplicationEvent
 		ApplicationEvent applicationEvent;
 		if (event instanceof ApplicationEvent applEvent) {
 			applicationEvent = applEvent;
@@ -422,6 +425,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		}
 
 		// Determine event type only once (for multicast and parent publish)
+		// 只确定一次事件类型（对于多播和父发布)
 		if (eventType == null) {
 			eventType = ResolvableType.forInstance(applicationEvent);
 			if (typeHint == null) {
@@ -430,14 +434,17 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		}
 
 		// Multicast right now if possible - or lazily once the multicaster is initialized
+		// 如果可能的话，现在就进行多播，或者在初始化多播后延迟
 		if (this.earlyApplicationEvents != null) {
 			this.earlyApplicationEvents.add(applicationEvent);
 		}
 		else {
+			// 将给定的应用程序事件多播到适当的侦听器
 			getApplicationEventMulticaster().multicastEvent(applicationEvent, eventType);
 		}
 
 		// Publish event via parent context as well...
+		// 也通过父上下文发布事件
 		if (this.parent != null) {
 			if (this.parent instanceof AbstractApplicationContext abstractApplicationContext) {
 				abstractApplicationContext.publishEvent(event, typeHint);
@@ -569,6 +576,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	//用于刷新整个Spring 上下文信息，定义了整个 Spring 上下文加载的流程。
 	@Override
 	public void refresh() throws BeansException, IllegalStateException {
+		// 同步监视器（刷新、同步）
 		synchronized (this.startupShutdownMonitor) {
 			// spring启动第二步 刷新配置
 			StartupStep contextRefresh = this.applicationStartup.start("spring.context.refresh");
@@ -625,6 +633,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				finishBeanFactoryInitialization(beanFactory);
 
 				// Last step: publish corresponding event.
+				// 发布相应的事件
 				finishRefresh();
 			}
 
@@ -874,10 +883,14 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 * Initialize the ApplicationEventMulticaster.
 	 * Uses SimpleApplicationEventMulticaster if none defined in the context.
 	 * @see org.springframework.context.event.SimpleApplicationEventMulticaster
+	 * 初始化事件多播器
 	 */
 	protected void initApplicationEventMulticaster() {
+		// 获取当前beanfactory
 		ConfigurableListableBeanFactory beanFactory = getBeanFactory();
+		// 判断当前bean工厂里是否包含BEAN_NAME为applicationEventMulticaster（自定义事件监听多播器）的Bean
 		if (beanFactory.containsLocalBean(APPLICATION_EVENT_MULTICASTER_BEAN_NAME)) {
+			// 有的话获取
 			this.applicationEventMulticaster =
 					beanFactory.getBean(APPLICATION_EVENT_MULTICASTER_BEAN_NAME, ApplicationEventMulticaster.class);
 			if (logger.isTraceEnabled()) {
@@ -885,6 +898,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 			}
 		}
 		else {
+			// 没有的话，设置默认的（SimpleApplicationEventMulticaster）
 			this.applicationEventMulticaster = new SimpleApplicationEventMulticaster(beanFactory);
 			beanFactory.registerSingleton(APPLICATION_EVENT_MULTICASTER_BEAN_NAME, this.applicationEventMulticaster);
 			if (logger.isTraceEnabled()) {
@@ -937,18 +951,21 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 */
 	protected void registerListeners() {
 		// Register statically specified listeners first.
+		// 将ApplicationListener监听器注册到多播器中
 		for (ApplicationListener<?> listener : getApplicationListeners()) {
 			getApplicationEventMulticaster().addApplicationListener(listener);
 		}
 
 		// Do not initialize FactoryBeans here: We need to leave all regular beans
 		// uninitialized to let post-processors apply to them!
+		// 从容器中获取所有实现了ApplicationListener接口的BeanDefinition的BeanName，放入集合ApplicationListenerBeans中
 		String[] listenerBeanNames = getBeanNamesForType(ApplicationListener.class, true, false);
 		for (String listenerBeanName : listenerBeanNames) {
 			getApplicationEventMulticaster().addApplicationListenerBean(listenerBeanName);
 		}
 
 		// Publish early application events now that we finally have a multicaster...
+		// 发布监听器集合（早期的）
 		Set<ApplicationEvent> earlyEventsToProcess = this.earlyApplicationEvents;
 		this.earlyApplicationEvents = null;
 		if (!CollectionUtils.isEmpty(earlyEventsToProcess)) {
@@ -1009,18 +1026,23 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 */
 	protected void finishRefresh() {
 		// Reset common introspection caches in Spring's core infrastructure.
+		// 重置Spring核心基础设施中的常见内省缓存
 		resetCommonCaches();
 
 		// Clear context-level resource caches (such as ASM metadata from scanning).
+		// 清除上下文级别的资源缓存（如扫描中的ASM元数据）
 		clearResourceCaches();
 
 		// Initialize lifecycle processor for this context.
+		// 初始化此上下文的生命周期处理器
 		initLifecycleProcessor();
 
 		// Propagate refresh to lifecycle processor first.
+		// 首先将刷新传播到生命周期处理器
 		getLifecycleProcessor().onRefresh();
 
 		// Publish the final event.
+		// 发布最终事件
 		publishEvent(new ContextRefreshedEvent(this));
 	}
 

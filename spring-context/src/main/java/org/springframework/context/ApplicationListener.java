@@ -38,13 +38,18 @@ import java.util.function.Consumer;
  * @see org.springframework.context.event.SmartApplicationListener
  * @see org.springframework.context.event.GenericApplicationListener
  * @see org.springframework.context.event.EventListener
+ *
+ * 基于观察者设计模式的标准接口
+ * 可以一般性地声明当向Spring容器注册时，事件将被相应地过滤，侦听器将被调用
+ *
+ * 仅匹配事件对象
  */
 @FunctionalInterface
 public interface ApplicationListener<E extends ApplicationEvent> extends EventListener {
 
 	/**
-	 * Handle an application event.
-	 * @param event the event to respond to
+	 * Handle an application event.   事件处理
+	 * @param event the event to respond to   事件
 	 */
 	void onApplicationEvent(E event);
 
@@ -55,6 +60,7 @@ public interface ApplicationListener<E extends ApplicationEvent> extends EventLi
 	 * needs to immediately run within the original thread which published the event
 	 * @since 6.1
 	 * @see org.springframework.context.event.SimpleApplicationEventMulticaster#setTaskExecutor
+	 * 返回此侦听器是否支持异步执行
 	 */
 	default boolean supportsAsyncExecution() {
 		return true;
