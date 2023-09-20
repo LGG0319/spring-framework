@@ -14,26 +14,21 @@
  * limitations under the License.
  */
 
-package org.springframework.beans.factory.annotation;
-
-import java.util.stream.Stream;
+package org.springframework.aot.hint.support;
 
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
-import org.springframework.aot.hint.TypeReference;
-import org.springframework.lang.Nullable;
 
 /**
- * {@link RuntimeHintsRegistrar} for Jakarta annotations.
+ * {@link RuntimeHintsRegistrar} to register hints for {@link org.springframework.core.SpringProperties}.
  *
  * @author Brian Clozel
+ * @since 6.1
  */
-class JakartaAnnotationsRuntimeHints implements RuntimeHintsRegistrar {
+class SpringPropertiesRuntimeHints implements RuntimeHintsRegistrar {
 
-	@Override
-	public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
-		Stream.of("jakarta.inject.Inject", "jakarta.inject.Provider", "jakarta.inject.Qualifier").forEach(typeName ->
-				hints.reflection().registerType(TypeReference.of(typeName)));
-	}
-
+		@Override
+		public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
+			hints.resources().registerPattern("spring.properties");
+		}
 }
