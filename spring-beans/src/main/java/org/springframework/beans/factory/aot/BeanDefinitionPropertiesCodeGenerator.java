@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -34,6 +35,7 @@ import java.util.function.Predicate;
 
 import org.springframework.aot.generate.GeneratedMethods;
 import org.springframework.aot.hint.ExecutableMode;
+import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.TypeReference;
 import org.springframework.beans.BeanUtils;
@@ -42,6 +44,7 @@ import org.springframework.beans.PropertyValue;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.beans.factory.config.ConstructorArgumentValues;
 import org.springframework.beans.factory.config.ConstructorArgumentValues.ValueHolder;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.AutowireCandidateQualifier;
@@ -167,14 +170,36 @@ class BeanDefinitionPropertiesCodeGenerator {
 	}
 
 	private void addConstructorArgumentValues(CodeBlock.Builder code, BeanDefinition beanDefinition) {
-		Map<Integer, ValueHolder> argumentValues =
-				beanDefinition.getConstructorArgumentValues().getIndexedArgumentValues();
-		if (!argumentValues.isEmpty()) {
-			argumentValues.forEach((index, valueHolder) -> {
+		ConstructorArgumentValues constructorValues = beanDefinition.getConstructorArgumentValues();
+		Map<Integer, ValueHolder> indexedValues = constructorValues.getIndexedArgumentValues();
+		if (!indexedValues.isEmpty()) {
+			indexedValues.forEach((index, valueHolder) -> {
 				CodeBlock valueCode = generateValue(valueHolder.getName(), valueHolder.getValue());
 				code.addStatement(
 						"$L.getConstructorArgumentValues().addIndexedArgumentValue($L, $L)",
 						BEAN_DEFINITION_VARIABLE, index, valueCode);
+			});
+		}
+		List<ValueHolder> genericValues = constructorValues.getGenericArgumentValues();
+		if (!genericValues.isEmpty()) {
+			genericValues.forEach(valueHolder -> {
+				String valueName = valueHolder.getName();
+				CodeBlock valueCode = generateValue(valueName, valueHolder.getValue());
+				if (valueName != null) {
+					CodeBlock valueTypeCode = this.valueCodeGenerator.generateCode(valueHolder.getType());
+					code.addStatement(
+							"$L.getConstructorArgumentValues().addGenericArgumentValue(new $T($L, $L, $S))",
+							BEAN_DEFINITION_VARIABLE, ValueHolder.class, valueCode, valueTypeCode, valueName);
+				}
+				else if (valueHolder.getType() != null) {
+					code.addStatement("$L.getConstructorArgumentValues().addGenericArgumentValue($L, $S)",
+							BEAN_DEFINITION_VARIABLE, valueCode, valueHolder.getType());
+
+				}
+				else {
+					code.addStatement("$L.getConstructorArgumentValues().addGenericArgumentValue($L)",
+							BEAN_DEFINITION_VARIABLE, valueCode);
+				}
 			});
 		}
 	}
@@ -195,6 +220,13 @@ class BeanDefinitionPropertiesCodeGenerator {
 					Method writeMethod = writeMethods.get(propertyValue.getName());
 					if (writeMethod != null) {
 						this.hints.reflection().registerMethod(writeMethod, ExecutableMode.INVOKE);
+						// ReflectionUtils#findField searches recursively in the type hierarchy
+						Class<?> searchType = beanDefinition.getTargetType();
+						while (searchType != null && searchType != writeMethod.getDeclaringClass()) {
+							this.hints.reflection().registerType(searchType, MemberCategory.DECLARED_FIELDS);
+							searchType = searchType.getSuperclass();
+						}
+						this.hints.reflection().registerType(writeMethod.getDeclaringClass(), MemberCategory.DECLARED_FIELDS);
 					}
 				}
 			}
