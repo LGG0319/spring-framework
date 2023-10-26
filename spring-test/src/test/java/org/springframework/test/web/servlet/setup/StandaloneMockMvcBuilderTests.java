@@ -96,7 +96,7 @@ class StandaloneMockMvcBuilderTests {
 	void applicationContextAttribute() {
 		TestStandaloneMockMvcBuilder builder = new TestStandaloneMockMvcBuilder(new PlaceholderController());
 		builder.addPlaceholderValue("sys.login.ajax", "/foo");
-		WebApplicationContext  wac = builder.initWebAppContext();
+		WebApplicationContext wac = builder.initWebAppContext();
 		assertThat(WebApplicationContextUtils.getRequiredWebApplicationContext(wac.getServletContext())).isEqualTo(wac);
 	}
 
@@ -134,7 +134,7 @@ class StandaloneMockMvcBuilderTests {
 		ArgumentCaptor<FilterConfig> captor = ArgumentCaptor.forClass(FilterConfig.class);
 
 		MockMvcBuilders.standaloneSetup(new PersonController())
-				.addFilter(filter, Map.of("p", "v"), EnumSet.of(DispatcherType.REQUEST), "/")
+				.addFilter(filter, null, Map.of("p", "v"), EnumSet.of(DispatcherType.REQUEST), "/")
 				.build();
 
 		verify(filter, times(1)).init(captor.capture());

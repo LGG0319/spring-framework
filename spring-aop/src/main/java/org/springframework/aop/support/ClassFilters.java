@@ -136,7 +136,6 @@ public abstract class ClassFilters {
 		public String toString() {
 			return getClass().getName() + ": " + Arrays.toString(this.filters);
 		}
-
 	}
 
 
@@ -177,7 +176,6 @@ public abstract class ClassFilters {
 		public String toString() {
 			return getClass().getName() + ": " + Arrays.toString(this.filters);
 		}
-
 	}
 
 
@@ -213,7 +211,6 @@ public abstract class ClassFilters {
 		public String toString() {
 			return "Negate " + this.original;
 		}
-
 	}
 
 }

@@ -66,14 +66,14 @@ public class MockMvcFilterDecoratorTests {
 	@Test
 	public void init() throws Exception {
 		FilterConfig config = new MockFilterConfig();
-		filter = new MockMvcFilterDecorator(delegate, null, null, "/");
+		filter = new MockMvcFilterDecorator(delegate, new String[] {"/"});
 		filter.init(config);
 		assertThat(delegate.filterConfig).isEqualTo(config);
 	}
 
 	@Test
 	public void destroy() {
-		filter = new MockMvcFilterDecorator(delegate, null, null, "/");
+		filter = new MockMvcFilterDecorator(delegate, new String[] {"/"});
 		filter.destroy();
 		assertThat(delegate.destroy).isTrue();
 	}
@@ -90,21 +90,25 @@ public class MockMvcFilterDecoratorTests {
 
 	@Test
 	public void matchPathMappingAllFolder() throws Exception {
+		assertFilterInvoked("/test/this", "*");
 		assertFilterInvoked("/test/this", "/*");
 	}
 
 	@Test
 	public void matchPathMappingAll() throws Exception {
+		assertFilterInvoked("/test", "*");
 		assertFilterInvoked("/test", "/*");
 	}
 
 	@Test
 	public void matchPathMappingAllContextRoot() throws Exception {
+		assertFilterInvoked("", "*");
 		assertFilterInvoked("", "/*");
 	}
 
 	@Test
 	public void matchPathMappingContextRootAndSlash() throws Exception {
+		assertFilterInvoked("/", "*");
 		assertFilterInvoked("/", "/*");
 	}
 
@@ -247,7 +251,7 @@ public class MockMvcFilterDecoratorTests {
 
 		request.setDispatcherType(requestDispatcherType);
 		request.setRequestURI(request.getContextPath() + requestUri);
-		filter = new MockMvcFilterDecorator(delegate, null, EnumSet.of(filterDispatcherType), pattern);
+		filter = new MockMvcFilterDecorator(delegate, null, null, EnumSet.of(filterDispatcherType), pattern);
 		filter.doFilter(request, response, filterChain);
 
 		assertThat(delegate.request).isNull();
@@ -261,7 +265,7 @@ public class MockMvcFilterDecoratorTests {
 
 	private void assertFilterInvoked(String requestUri, String pattern) throws Exception {
 		request.setRequestURI(request.getContextPath() + requestUri);
-		filter = new MockMvcFilterDecorator(delegate, null, null, pattern);
+		filter = new MockMvcFilterDecorator(delegate, new String[] {pattern});
 		filter.doFilter(request, response, filterChain);
 
 		assertThat(delegate.request).isEqualTo(request);
