@@ -644,14 +644,14 @@ class WebClientIntegrationTests {
 
 		int errorStatus = 555;
 		assertThat(HttpStatus.resolve(errorStatus)).isNull();
-		String errorMessage = "Something went wrong";
-		prepareResponse(response -> response.setResponseCode(errorStatus)
-				.setHeader("Content-Type", "text/plain").setBody(errorMessage));
 
-		Mono<String> result = this.webClient.get()
-				.uri("/unknownPage")
-				.retrieve()
-				.bodyToMono(String.class);
+		String errorMessage = "Something went wrong";
+		prepareResponse(response ->
+				response.setResponseCode(errorStatus)
+						.setHeader("Content-Type", "text/plain")
+						.setBody(errorMessage));
+
+		Mono<String> result = this.webClient.get().uri("/unknownPage").retrieve().bodyToMono(String.class);
 
 		StepVerifier.create(result)
 				.expectErrorSatisfies(throwable -> {
@@ -659,6 +659,40 @@ class WebClientIntegrationTests {
 					UnknownHttpStatusCodeException ex = (UnknownHttpStatusCodeException) throwable;
 					assertThat(ex.getMessage()).isEqualTo(("Unknown status code ["+errorStatus+"]"));
 					assertThat(ex.getRawStatusCode()).isEqualTo(errorStatus);
+					assertThat(ex.getStatusText()).isEmpty();
+					assertThat(ex.getHeaders().getContentType()).isEqualTo(MediaType.TEXT_PLAIN);
+					assertThat(ex.getResponseBodyAsString()).isEqualTo(errorMessage);
+				})
+				.verify(Duration.ofSeconds(3));
+
+		expectRequestCount(1);
+		expectRequest(request -> {
+			assertThat(request.getHeader(HttpHeaders.ACCEPT)).isEqualTo("*/*");
+			assertThat(request.getPath()).isEqualTo("/unknownPage");
+		});
+	}
+
+	@ParameterizedWebClientTest // gh-31202
+	void retrieve929UnknownStatusCode(ClientHttpConnector connector) {
+		startServer(connector);
+
+		int errorStatus = 929;
+		assertThat(HttpStatus.resolve(errorStatus)).isNull();
+
+		String errorMessage = "Something went wrong";
+		prepareResponse(response ->
+				response.setResponseCode(errorStatus)
+						.setHeader("Content-Type", "text/plain")
+						.setBody(errorMessage));
+
+		Mono<String> result = this.webClient.get().uri("/unknownPage").retrieve().bodyToMono(String.class);
+
+		StepVerifier.create(result)
+				.expectErrorSatisfies(throwable -> {
+					assertThat(throwable).isInstanceOf(UnknownHttpStatusCodeException.class);
+					UnknownHttpStatusCodeException ex = (UnknownHttpStatusCodeException) throwable;
+					assertThat(ex.getMessage()).isEqualTo(("Unknown status code ["+errorStatus+"]"));
+					assertThat(ex.getStatusCode().value()).isEqualTo(errorStatus);
 					assertThat(ex.getStatusText()).isEmpty();
 					assertThat(ex.getHeaders().getContentType()).isEqualTo(MediaType.TEXT_PLAIN);
 					assertThat(ex.getResponseBodyAsString()).isEqualTo(errorMessage);

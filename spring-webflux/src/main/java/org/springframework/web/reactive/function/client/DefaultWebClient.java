@@ -79,7 +79,9 @@ final class DefaultWebClient implements WebClient {
 	private static final Mono<ClientResponse> NO_HTTP_CLIENT_RESPONSE_ERROR = Mono.error(
 			() -> new IllegalStateException("The underlying HTTP client completed without emitting a response."));
 
-	private static final DefaultClientRequestObservationConvention DEFAULT_OBSERVATION_CONVENTION = new DefaultClientRequestObservationConvention();
+	private static final DefaultClientRequestObservationConvention DEFAULT_OBSERVATION_CONVENTION =
+			new DefaultClientRequestObservationConvention();
+
 
 	private final ExchangeFunction exchangeFunction;
 
@@ -119,10 +121,10 @@ final class DefaultWebClient implements WebClient {
 		this.uriBuilderFactory = uriBuilderFactory;
 		this.defaultHeaders = defaultHeaders;
 		this.defaultCookies = defaultCookies;
-		this.observationRegistry = observationRegistry;
-		this.observationConvention = observationConvention;
 		this.defaultRequest = defaultRequest;
 		this.defaultStatusHandlers = initStatusHandlers(statusHandlerMap);
+		this.observationRegistry = observationRegistry;
+		this.observationConvention = observationConvention;
 		this.builder = builder;
 	}
 
@@ -515,10 +517,9 @@ final class DefaultWebClient implements WebClient {
 
 	private static class DefaultResponseSpec implements ResponseSpec {
 
-		private static final Predicate<HttpStatusCode> STATUS_CODE_ERROR = HttpStatusCode::isError;
-
 		private static final StatusHandler DEFAULT_STATUS_HANDLER =
-				new StatusHandler(STATUS_CODE_ERROR, ClientResponse::createException);
+				new StatusHandler(code -> code.value() >= 400, ClientResponse::createException);
+
 
 		private final HttpMethod httpMethod;
 
@@ -698,7 +699,7 @@ final class DefaultWebClient implements WebClient {
 		private static URI getUriToLog(URI uri) {
 			if (StringUtils.hasText(uri.getQuery())) {
 				try {
-					uri = new URI(uri.getScheme(), uri.getHost(), uri.getPath(), null);
+					uri = new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), uri.getPath(), null, null);
 				}
 				catch (URISyntaxException ex) {
 					// ignore
