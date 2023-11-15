@@ -77,7 +77,9 @@ class ConditionEvaluator {
 	 * @param metadata the meta data
 	 * @param phase the phase of the call
 	 * @return if the item should be skipped
-	 * 判断是否应该解析配置类，并将配置类中包含的class解析为BeanDefinition
+	 * 判断是否应该解析配置类，并将配置类中包含的class解析为BeanDefinition（是否满足@Conditional注解要求）
+	 * 1.配置类上是否有注解@Conditional，要解析为BeanDefinition
+	 * 2.ConfigurationPhase匹配与condition.matches返回false不解析
 	 */
 	public boolean shouldSkip(@Nullable AnnotatedTypeMetadata metadata, @Nullable ConfigurationPhase phase) {
 		// 判断配置类上是否有注解@Conditional,没有时跳过，不解析class为BeanDefinition
@@ -125,7 +127,7 @@ class ConditionEvaluator {
 		return false;
 	}
 
-	// 获取@Conditional注解上的所有注解
+	// 获取@Conditional注解上的所有属性
 	@SuppressWarnings("unchecked")
 	private List<String[]> getConditionClasses(AnnotatedTypeMetadata metadata) {
 		MultiValueMap<String, Object> attributes = metadata.getAllAnnotationAttributes(Conditional.class.getName(), true);

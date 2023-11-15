@@ -32,11 +32,12 @@ import org.springframework.util.FileCopyUtils;
 /**
  * Interface for a resource descriptor that abstracts from the actual
  * type of underlying resource, such as a file or class path resource.
- *
+ * 资源描述符的接口，该描述符从底层资源的实际类型中抽象出来，例如文件或类路径资源
  * <p>An InputStream can be opened for every resource if it exists in
  * physical form, but a URL or File handle can just be returned for
  * certain resources. The actual behavior is implementation-specific.
- *
+ * 如果每个资源以物理形式存在，则可以为其打开InputStream，
+ * 但只能为某些资源返回URL或File句柄。实际行为是特定于实现的
  * @author Juergen Hoeller
  * @author Arjen Poutsma
  * @since 28.12.2003

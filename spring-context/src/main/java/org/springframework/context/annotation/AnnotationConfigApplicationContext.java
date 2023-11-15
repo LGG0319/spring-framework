@@ -33,7 +33,8 @@ import org.springframework.util.Assert;
  * in particular {@link Configuration @Configuration}-annotated classes, but also plain
  * {@link org.springframework.stereotype.Component @Component} types and JSR-330 compliant
  * classes using {@code jakarta.inject} annotations.
- *
+ * 独立应用程序上下文，接受<em>组件类</em>作为输入&mdash；特别是{@linkConfiguration@Configuration}注释类，
+ * 还包括使用{@code-jakarta.inject}注释的普通{@link.org.springframework.stereotype.Component@Component}类型和JSR-330兼容类。
  * <p>Allows for registering classes one by one using {@link #register(Class...)}
  * as well as for classpath scanning using {@link #scan(String...)}.
  *
@@ -88,6 +89,7 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 	 * {@link Configuration @Configuration} classes
 	 * 创建AnnotationConfigApplicationContext，
 	 * 解析class成BeanDefinition然后保存BeanDefinition,并刷新context
+	 * 调用父类构造方法新建DefaultListableBeanFactory beanFactory对象
 	 */
 	public AnnotationConfigApplicationContext(Class<?>... componentClasses) {
 		this();
@@ -164,7 +166,7 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 	 * @see #scan(String...)
 	 * @see #refresh()
 	 * 	// 注册一个或多个要处理的组件类(配置类)，
-	 * 	// 解析class成BeanDefinition然后保存BeanDefinition
+	 * 	// 解析class成BeanDefinition然后保存BeanDefinition（有@Conditional且不满足@Conditional注解要求的不注册）
 	 * 	// 并且要调用refresh才能活得context
 	 */
 	@Override

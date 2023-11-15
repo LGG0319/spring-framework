@@ -259,7 +259,7 @@ public class AnnotatedBeanDefinitionReader {
 			@Nullable Class<? extends Annotation>[] qualifiers, @Nullable Supplier<T> supplier,
 			@Nullable BeanDefinitionCustomizer[] customizers) {
 
-		// 根据传入配置信息（配置类）判断是否需要解析class为BeanDefinition,不需要则跳过
+		// 根据传入配置信息（配置类）判断是否需要解析class为BeanDefinition,不需要则跳过（是否满足@Conditional注解要求）
 		AnnotatedGenericBeanDefinition abd = new AnnotatedGenericBeanDefinition(beanClass);
 		if (this.conditionEvaluator.shouldSkip(abd.getMetadata())) {
 			return;
@@ -267,8 +267,9 @@ public class AnnotatedBeanDefinitionReader {
 
 		// 设置候选属性为true
 		abd.setAttribute(ConfigurationClassUtils.CANDIDATE_ATTRIBUTE, Boolean.TRUE);
+		// 设置实例回调
 		abd.setInstanceSupplier(supplier);
-		// 解析@Scope注解
+		// 解析@Scope注解，默认为单例
 		ScopeMetadata scopeMetadata = this.scopeMetadataResolver.resolveScopeMetadata(abd);
 		abd.setScope(scopeMetadata.getScopeName());
 		String beanName = (name != null ? name : this.beanNameGenerator.generateBeanName(abd, this.registry));

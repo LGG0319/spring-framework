@@ -762,6 +762,8 @@ public abstract class AbstractBeanDefinition extends BeanMetadataAttributeAccess
 	 * @since 5.0
 	 * @see #setConstructorArgumentValues(ConstructorArgumentValues)
 	 * @see #setPropertyValues(MutablePropertyValues)
+	 * 指定用于创建bean实例的回调，作为声明式指定的工厂方法的替代方法
+	 * 如果设置了这样的回调，它将覆盖任何其他构造函数或工厂方法元数据。然而，bean属性填充和潜在的注释驱动注入仍将照常应用。
 	 */
 	public void setInstanceSupplier(@Nullable Supplier<?> instanceSupplier) {
 		this.instanceSupplier = instanceSupplier;

@@ -227,6 +227,7 @@ public interface BeanFactory {
 	 * @return a corresponding provider handle
 	 * @since 5.1
 	 * @see #getBeanProvider(ResolvableType)
+	 * 返回当前bean所在的bean工厂对象
 	 */
 	<T> ObjectProvider<T> getBeanProvider(Class<T> requiredType);
 

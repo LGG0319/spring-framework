@@ -47,6 +47,7 @@ public interface ConfigurableApplicationContext extends ApplicationContext, Life
 	/**
 	 * Any number of these characters are considered delimiters between
 	 * multiple context config paths in a single String value.
+	 * 这些字符中的任意数量都被视为单个String值中多个上下文配置路径之间的分隔符。
 	 * @see org.springframework.context.support.AbstractXmlApplicationContext#setConfigLocation
 	 * @see org.springframework.web.context.ContextLoader#CONFIG_LOCATION_PARAM
 	 * @see org.springframework.web.servlet.FrameworkServlet#setContextConfigLocation
@@ -154,6 +155,8 @@ public interface ConfigurableApplicationContext extends ApplicationContext, Life
 	 * bean factory of this application context on refresh, before any of the
 	 * bean definitions get evaluated. To be invoked during context configuration.
 	 * @param postProcessor the factory processor to register
+	 * 添加一个新的BeanFactoryPostProcessor，该处理器将在刷新时应用于该应用程序上下文的内部bean工厂，
+	 * 然后再评估任何bean定义。在上下文配置期间调用。
 	 */
 	void addBeanFactoryPostProcessor(BeanFactoryPostProcessor postProcessor);
 
