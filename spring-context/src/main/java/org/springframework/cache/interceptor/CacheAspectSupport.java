@@ -47,11 +47,13 @@ import org.springframework.beans.factory.annotation.BeanFactoryAnnotationUtils;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.expression.AnnotatedElementKey;
+import org.springframework.context.expression.BeanFactoryResolver;
 import org.springframework.core.BridgeMethodResolver;
 import org.springframework.core.KotlinDetector;
 import org.springframework.core.ReactiveAdapter;
 import org.springframework.core.ReactiveAdapterRegistry;
 import org.springframework.expression.EvaluationContext;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
@@ -99,7 +101,10 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 
 	private final Map<CacheOperationCacheKey, CacheOperationMetadata> metadataCache = new ConcurrentHashMap<>(1024);
 
-	private final CacheOperationExpressionEvaluator evaluator = new CacheOperationExpressionEvaluator();
+	private final StandardEvaluationContext originalEvaluationContext = new StandardEvaluationContext();
+
+	private final CacheOperationExpressionEvaluator evaluator = new CacheOperationExpressionEvaluator(
+			new CacheEvaluationContextFactory(this.originalEvaluationContext));
 
 	@Nullable
 	private final ReactiveCachingHandler reactiveCachingHandler;
@@ -222,6 +227,7 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) {
 		this.beanFactory = beanFactory;
+		this.originalEvaluationContext.setBeanResolver(new BeanFactoryResolver(beanFactory));
 	}
 
 
@@ -357,7 +363,7 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 	protected Object execute(CacheOperationInvoker invoker, Object target, Method method, Object[] args) {
 		// Check whether aspect is enabled (to cope with cases where the AJ is pulled in automatically)
 		if (this.initialized) {
-			Class<?> targetClass = getTargetClass(target);
+			Class<?> targetClass = AopProxyUtils.ultimateTargetClass(target);
 			CacheOperationSource cacheOperationSource = getCacheOperationSource();
 			if (cacheOperationSource != null) {
 				Collection<CacheOperation> operations = cacheOperationSource.getCacheOperations(method, targetClass);
@@ -368,7 +374,7 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 			}
 		}
 
-		return invoker.invoke();
+		return invokeOperation(invoker);
 	}
 
 	/**
@@ -386,10 +392,6 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 		return invoker.invoke();
 	}
 
-	private Class<?> getTargetClass(Object target) {
-		return AopProxyUtils.ultimateTargetClass(target);
-	}
-
 	@Nullable
 	private Object execute(CacheOperationInvoker invoker, Method method, CacheOperationContexts contexts) {
 		if (contexts.isSynchronized()) {
@@ -402,14 +404,111 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 				CacheOperationExpressionEvaluator.NO_RESULT);
 
 		// Check if we have a cached value matching the conditions
-		Object cacheHit = findCachedValue(contexts.get(CacheableOperation.class));
+		Object cacheHit = findCachedValue(invoker, method, contexts);
+		if (cacheHit == null || cacheHit instanceof Cache.ValueWrapper) {
+			return evaluate(cacheHit, invoker, method, contexts);
+		}
+		return cacheHit;
+	}
+
+	@Nullable
+	private Object executeSynchronized(CacheOperationInvoker invoker, Method method, CacheOperationContexts contexts) {
+		CacheOperationContext context = contexts.get(CacheableOperation.class).iterator().next();
+		if (isConditionPassing(context, CacheOperationExpressionEvaluator.NO_RESULT)) {
+			Object key = generateKey(context, CacheOperationExpressionEvaluator.NO_RESULT);
+			Cache cache = context.getCaches().iterator().next();
+			if (CompletableFuture.class.isAssignableFrom(method.getReturnType())) {
+				return cache.retrieve(key, () -> (CompletableFuture<?>) invokeOperation(invoker));
+			}
+			if (this.reactiveCachingHandler != null) {
+				Object returnValue = this.reactiveCachingHandler.executeSynchronized(invoker, method, cache, key);
+				if (returnValue != ReactiveCachingHandler.NOT_HANDLED) {
+					return returnValue;
+				}
+			}
+			try {
+				return wrapCacheValue(method, cache.get(key, () -> unwrapReturnValue(invokeOperation(invoker))));
+			}
+			catch (Cache.ValueRetrievalException ex) {
+				// Directly propagate ThrowableWrapper from the invoker,
+				// or potentially also an IllegalArgumentException etc.
+				ReflectionUtils.rethrowRuntimeException(ex.getCause());
+				// Never reached
+				return null;
+			}
+		}
+		else {
+			// No caching required, just call the underlying method
+			return invokeOperation(invoker);
+		}
+	}
+
+	/**
+	 * Find a cached value only for {@link CacheableOperation} that passes the condition.
+	 * @param contexts the cacheable operations
+	 * @return a {@link Cache.ValueWrapper} holding the cached value,
+	 * or {@code null} if none is found
+	 */
+	@Nullable
+	private Object findCachedValue(CacheOperationInvoker invoker, Method method, CacheOperationContexts contexts) {
+		for (CacheOperationContext context : contexts.get(CacheableOperation.class)) {
+			if (isConditionPassing(context, CacheOperationExpressionEvaluator.NO_RESULT)) {
+				Object key = generateKey(context, CacheOperationExpressionEvaluator.NO_RESULT);
+				Object cached = findInCaches(context, key, invoker, method, contexts);
+				if (cached != null) {
+					if (logger.isTraceEnabled()) {
+						logger.trace("Cache entry for key '" + key + "' found in cache(s) " + context.getCacheNames());
+					}
+					return cached;
+				}
+				else {
+					if (logger.isTraceEnabled()) {
+						logger.trace("No cache entry for key '" + key + "' in cache(s) " + context.getCacheNames());
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	@Nullable
+	private Object findInCaches(CacheOperationContext context, Object key,
+			CacheOperationInvoker invoker, Method method, CacheOperationContexts contexts) {
+
+		for (Cache cache : context.getCaches()) {
+			if (CompletableFuture.class.isAssignableFrom(context.getMethod().getReturnType())) {
+				CompletableFuture<?> result = cache.retrieve(key);
+				if (result != null) {
+					return result.thenCompose(value -> (CompletableFuture<?>) evaluate(
+							(value != null ? CompletableFuture.completedFuture(unwrapCacheValue(value)) : null),
+							invoker, method, contexts));
+				}
+			}
+			if (this.reactiveCachingHandler != null) {
+				Object returnValue = this.reactiveCachingHandler.findInCaches(
+						context, cache, key, invoker, method, contexts);
+				if (returnValue != ReactiveCachingHandler.NOT_HANDLED) {
+					return returnValue;
+				}
+			}
+			Cache.ValueWrapper result = doGet(cache, key);
+			if (result != null) {
+				return result;
+			}
+		}
+		return null;
+	}
+
+	@Nullable
+	private Object evaluate(@Nullable Object cacheHit, CacheOperationInvoker invoker, Method method,
+			CacheOperationContexts contexts) {
 
 		Object cacheValue;
 		Object returnValue;
 
 		if (cacheHit != null && !hasCachePut(contexts)) {
 			// If there are no put requests, just use the cache hit
-			cacheValue = (cacheHit instanceof Cache.ValueWrapper wrapper ? wrapper.get() : cacheHit);
+			cacheValue = unwrapCacheValue(cacheHit);
 			returnValue = wrapCacheValue(method, cacheValue);
 		}
 		else {
@@ -446,35 +545,8 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 	}
 
 	@Nullable
-	private Object executeSynchronized(CacheOperationInvoker invoker, Method method, CacheOperationContexts contexts) {
-		CacheOperationContext context = contexts.get(CacheableOperation.class).iterator().next();
-		if (isConditionPassing(context, CacheOperationExpressionEvaluator.NO_RESULT)) {
-			Object key = generateKey(context, CacheOperationExpressionEvaluator.NO_RESULT);
-			Cache cache = context.getCaches().iterator().next();
-			if (CompletableFuture.class.isAssignableFrom(method.getReturnType())) {
-				return cache.retrieve(key, () -> (CompletableFuture<?>) invokeOperation(invoker));
-			}
-			if (this.reactiveCachingHandler != null) {
-				Object returnValue = this.reactiveCachingHandler.executeSynchronized(invoker, method, cache, key);
-				if (returnValue != ReactiveCachingHandler.NOT_HANDLED) {
-					return returnValue;
-				}
-			}
-			try {
-				return wrapCacheValue(method, cache.get(key, () -> unwrapReturnValue(invokeOperation(invoker))));
-			}
-			catch (Cache.ValueRetrievalException ex) {
-				// Directly propagate ThrowableWrapper from the invoker,
-				// or potentially also an IllegalArgumentException etc.
-				ReflectionUtils.rethrowRuntimeException(ex.getCause());
-				// Never reached
-				return null;
-			}
-		}
-		else {
-			// No caching required, just call the underlying method
-			return invokeOperation(invoker);
-		}
+	private Object unwrapCacheValue(@Nullable Object cacheValue) {
+		return (cacheValue instanceof Cache.ValueWrapper wrapper ? wrapper.get() : cacheValue);
 	}
 
 	@Nullable
@@ -570,34 +642,6 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 	}
 
 	/**
-	 * Find a cached value only for {@link CacheableOperation} that passes the condition.
-	 * @param contexts the cacheable operations
-	 * @return a {@link Cache.ValueWrapper} holding the cached value,
-	 * or {@code null} if none is found
-	 */
-	@Nullable
-	private Object findCachedValue(Collection<CacheOperationContext> contexts) {
-		for (CacheOperationContext context : contexts) {
-			if (isConditionPassing(context, CacheOperationExpressionEvaluator.NO_RESULT)) {
-				Object key = generateKey(context, CacheOperationExpressionEvaluator.NO_RESULT);
-				Object cached = findInCaches(context, key);
-				if (cached != null) {
-					if (logger.isTraceEnabled()) {
-						logger.trace("Cache entry for key '" + key + "' found in cache(s) " + context.getCacheNames());
-					}
-					return cached;
-				}
-				else {
-					if (logger.isTraceEnabled()) {
-						logger.trace("No cache entry for key '" + key + "' in cache(s) " + context.getCacheNames());
-					}
-				}
-			}
-		}
-		return null;
-	}
-
-	/**
 	 * Collect the {@link CachePutRequest} for all {@link CacheOperation} using
 	 * the specified result value.
 	 * @param contexts the contexts to handle
@@ -608,28 +652,10 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 			@Nullable Object result, Collection<CachePutRequest> putRequests) {
 
 		for (CacheOperationContext context : contexts) {
-			if (isConditionPassing(context, result) && context.canPutToCache(result)) {
-				Object key = generateKey(context, result);
-				putRequests.add(new CachePutRequest(context, key));
+			if (isConditionPassing(context, result)) {
+				putRequests.add(new CachePutRequest(context));
 			}
 		}
-	}
-
-	@Nullable
-	private Object findInCaches(CacheOperationContext context, Object key) {
-		for (Cache cache : context.getCaches()) {
-			if (CompletableFuture.class.isAssignableFrom(context.getMethod().getReturnType())) {
-				return cache.retrieve(key);
-			}
-			if (this.reactiveCachingHandler != null) {
-				Object returnValue = this.reactiveCachingHandler.findInCaches(context, cache, key);
-				if (returnValue != ReactiveCachingHandler.NOT_HANDLED) {
-					return returnValue;
-				}
-			}
-			return doGet(cache, key);
-		}
-		return null;
 	}
 
 	private boolean isConditionPassing(CacheOperationContext context, @Nullable Object result) {
@@ -852,7 +878,7 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 
 		private EvaluationContext createEvaluationContext(@Nullable Object result) {
 			return evaluator.createEvaluationContext(this.caches, this.metadata.method, this.args,
-					this.target, this.metadata.targetClass, this.metadata.targetMethod, result, beanFactory);
+					this.target, this.metadata.targetClass, this.metadata.targetMethod, result);
 		}
 
 		protected Collection<? extends Cache> getCaches() {
@@ -916,22 +942,16 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 
 		private final CacheOperationContext context;
 
-		private final Object key;
-
-		public CachePutRequest(CacheOperationContext context, Object key) {
+		public CachePutRequest(CacheOperationContext context) {
 			this.context = context;
-			this.key = key;
 		}
 
 		@Nullable
 		public Object apply(@Nullable Object result) {
 			if (result instanceof CompletableFuture<?> future) {
 				return future.whenComplete((value, ex) -> {
-					if (ex != null) {
-						performEvict(ex);
-					}
-					else {
-						performPut(value);
+					if (ex == null) {
+						performCachePut(value);
 					}
 				});
 			}
@@ -941,27 +961,20 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 					return returnValue;
 				}
 			}
-			performPut(result);
+			performCachePut(result);
 			return null;
 		}
 
-		void performPut(@Nullable Object value) {
-			if (logger.isTraceEnabled()) {
-				logger.trace("Creating cache entry for key '" + this.key + "' in cache(s) " +
-						this.context.getCacheNames());
-			}
-			for (Cache cache : this.context.getCaches()) {
-				doPut(cache, this.key, value);
-			}
-		}
-
-		void performEvict(Throwable cause) {
-			if (logger.isTraceEnabled()) {
-				logger.trace("Removing cache entry for key '" + this.key + "' from cache(s) " +
-						this.context.getCacheNames() + " due to exception: " + cause);
-			}
-			for (Cache cache : this.context.getCaches()) {
-				doEvict(cache, this.key, false);
+		public void performCachePut(@Nullable Object value) {
+			if (this.context.canPutToCache(value)) {
+				Object key = generateKey(this.context, value);
+				if (logger.isTraceEnabled()) {
+					logger.trace("Creating cache entry for key '" + key + "' in cache(s) " +
+							this.context.getCacheNames());
+				}
+				for (Cache cache : this.context.getCaches()) {
+					doPut(cache, key, value);
+				}
 			}
 		}
 	}
@@ -990,11 +1003,10 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 		}
 		@Override
 		public void onError(Throwable t) {
-			this.request.performEvict(t);
 		}
 		@Override
 		public void onComplete() {
-			this.request.performPut(this.cacheValue);
+			this.request.performCachePut(this.cacheValue);
 		}
 	}
 
@@ -1042,8 +1054,11 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 			return NOT_HANDLED;
 		}
 
+		@SuppressWarnings("unchecked")
 		@Nullable
-		public Object findInCaches(CacheOperationContext context, Cache cache, Object key) {
+		public Object findInCaches(CacheOperationContext context, Cache cache, Object key,
+				CacheOperationInvoker invoker, Method method, CacheOperationContexts contexts) {
+
 			ReactiveAdapter adapter = this.registry.getAdapter(context.getMethod().getReturnType());
 			if (adapter != null) {
 				CompletableFuture<?> cachedFuture = cache.retrieve(key);
@@ -1051,11 +1066,16 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 					return null;
 				}
 				if (adapter.isMultiValue()) {
-					return adapter.fromPublisher(Flux.from(Mono.fromFuture(cachedFuture))
-							.flatMap(v -> (v instanceof Iterable<?> iv ? Flux.fromIterable(iv) : Flux.just(v))));
+					return adapter.fromPublisher(Flux.from(
+							Mono.fromFuture(cachedFuture)
+									.flatMap(value -> (Mono<?>) evaluate(Mono.just(unwrapCacheValue(value)), invoker, method, contexts)))
+							.flatMap(v -> (v instanceof Iterable<?> iv ? Flux.fromIterable(iv) : Flux.just(v)))
+							.switchIfEmpty(Flux.defer(() -> (Flux<?>) evaluate(null, invoker, method, contexts))));
 				}
 				else {
-					return adapter.fromPublisher(Mono.fromFuture(cachedFuture));
+					return adapter.fromPublisher(Mono.fromFuture(cachedFuture)
+							.flatMap(value -> (Mono<?>) evaluate(Mono.just(unwrapCacheValue(value)), invoker, method, contexts))
+							.switchIfEmpty(Mono.defer(() -> (Mono) evaluate(null, invoker, method, contexts))));
 				}
 			}
 			return NOT_HANDLED;
@@ -1072,7 +1092,7 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 				}
 				else {
 					return adapter.fromPublisher(Mono.from(adapter.toPublisher(result))
-							.doOnSuccess(request::performPut).doOnError(request::performEvict));
+							.doOnSuccess(request::performCachePut));
 				}
 			}
 			return NOT_HANDLED;

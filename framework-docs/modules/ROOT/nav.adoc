@@ -421,6 +421,7 @@
 *** xref:integration/cache/specific-config.adoc[]
 ** xref:integration/observability.adoc[]
 ** xref:integration/checkpoint-restore.adoc[]
+** xref:integration/class-data-sharing.adoc[]
 ** xref:integration/appendix.adoc[]
 * xref:languages.adoc[]
 ** xref:languages/kotlin.adoc[]
@@ -438,4 +439,4 @@
 ** xref:languages/groovy.adoc[]
 ** xref:languages/dynamic.adoc[]
 * xref:appendix.adoc[]
-* https://github.com/spring-projects/spring-framework/wiki[Wiki]
+* {spring-framework-wiki}[Wiki]
