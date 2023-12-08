@@ -725,7 +725,7 @@ class XmlBeanFactoryTests {
 		InitAndIB iib = (InitAndIB) xbf.getBean("init-and-ib");
 		assertThat(InitAndIB.constructed).isTrue();
 		assertThat(iib.afterPropertiesSetInvoked && iib.initMethodInvoked).isTrue();
-		assertThat(!iib.destroyed && !iib.customDestroyed).isTrue();
+		assertThat(iib.destroyed && !iib.customDestroyed).isFalse();
 		xbf.destroySingletons();
 		assertThat(iib.destroyed && iib.customDestroyed).isTrue();
 		xbf.destroySingletons();
@@ -746,7 +746,7 @@ class XmlBeanFactoryTests {
 		InitAndIB iib = (InitAndIB) xbf.getBean("ib-same-init");
 		assertThat(InitAndIB.constructed).isTrue();
 		assertThat(iib.afterPropertiesSetInvoked && !iib.initMethodInvoked).isTrue();
-		assertThat(!iib.destroyed && !iib.customDestroyed).isTrue();
+		assertThat(iib.destroyed && !iib.customDestroyed).isFalse();
 		xbf.destroySingletons();
 		assertThat(iib.destroyed && !iib.customDestroyed).isTrue();
 		xbf.destroySingletons();
@@ -842,7 +842,7 @@ class XmlBeanFactoryTests {
 
 		DependenciesBean rod5 = (DependenciesBean) xbf.getBean("rod5");
 		// Should not have been autowired
-		assertThat((Object) rod5.getSpouse()).isNull();
+		assertThat(rod5.getSpouse()).isNull();
 
 		BeanFactory appCtx = (BeanFactory) xbf.getBean("childAppCtx");
 		assertThat(appCtx.containsBean("rod1")).isTrue();
@@ -944,7 +944,7 @@ class XmlBeanFactoryTests {
 		catch (BeanCreationException ex) {
 			ex.printStackTrace();
 			assertThat(ex.toString()).contains("touchy");
-			assertThat((Object) ex.getRelatedCauses()).isNull();
+			assertThat(ex.getRelatedCauses()).isNull();
 		}
 	}
 

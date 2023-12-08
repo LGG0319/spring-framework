@@ -670,8 +670,10 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 	private Object generateKey(CacheOperationContext context, @Nullable Object result) {
 		Object key = context.generateKey(result);
 		if (key == null) {
-			throw new IllegalArgumentException("Null key returned for cache operation (maybe you are " +
-					"using named params on classes without debug info?) " + context.metadata.operation);
+			throw new IllegalArgumentException("""
+					Null key returned for cache operation [%s]. If you are using named parameters, \
+					ensure that the compiler uses the '-parameters' flag."""
+						.formatted(context.metadata.operation));
 		}
 		if (logger.isTraceEnabled()) {
 			logger.trace("Computed cache key '" + key + "' for operation " + context.metadata.operation);
@@ -1054,7 +1056,7 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 			return NOT_HANDLED;
 		}
 
-		@SuppressWarnings("unchecked")
+		@SuppressWarnings({ "unchecked", "rawtypes" })
 		@Nullable
 		public Object findInCaches(CacheOperationContext context, Cache cache, Object key,
 				CacheOperationInvoker invoker, Method method, CacheOperationContexts contexts) {
@@ -1068,13 +1070,13 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 				if (adapter.isMultiValue()) {
 					return adapter.fromPublisher(Flux.from(
 							Mono.fromFuture(cachedFuture)
-									.flatMap(value -> (Mono<?>) evaluate(Mono.just(unwrapCacheValue(value)), invoker, method, contexts)))
+									.flatMap(value -> (Mono<?>) evaluate(Mono.justOrEmpty(unwrapCacheValue(value)), invoker, method, contexts)))
 							.flatMap(v -> (v instanceof Iterable<?> iv ? Flux.fromIterable(iv) : Flux.just(v)))
 							.switchIfEmpty(Flux.defer(() -> (Flux<?>) evaluate(null, invoker, method, contexts))));
 				}
 				else {
 					return adapter.fromPublisher(Mono.fromFuture(cachedFuture)
-							.flatMap(value -> (Mono<?>) evaluate(Mono.just(unwrapCacheValue(value)), invoker, method, contexts))
+							.flatMap(value -> (Mono<?>) evaluate(Mono.justOrEmpty(unwrapCacheValue(value)), invoker, method, contexts))
 							.switchIfEmpty(Mono.defer(() -> (Mono) evaluate(null, invoker, method, contexts))));
 				}
 			}
