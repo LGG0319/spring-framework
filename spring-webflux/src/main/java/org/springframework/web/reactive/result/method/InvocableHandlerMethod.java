@@ -18,16 +18,18 @@ package org.springframework.web.reactive.result.method;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Stream;
 
 import kotlin.Unit;
 import kotlin.coroutines.CoroutineContext;
+import kotlin.jvm.JvmClassMappingKt;
+import kotlin.reflect.KClass;
 import kotlin.reflect.KFunction;
 import kotlin.reflect.KParameter;
 import kotlin.reflect.jvm.KCallablesJvm;
@@ -44,8 +46,10 @@ import org.springframework.core.ReactiveAdapterRegistry;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
+import org.springframework.util.ReflectionUtils;
 import org.springframework.validation.method.MethodValidator;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.reactive.BindingContext;
@@ -69,6 +73,9 @@ public class InvocableHandlerMethod extends HandlerMethod {
 	private static final Class<?>[] EMPTY_GROUPS = new Class<?>[0];
 
 	private static final Object NO_ARG_VALUE = new Object();
+
+	private static final ReflectionUtils.MethodFilter boxImplFilter =
+			(method -> method.isSynthetic() && Modifier.isStatic(method.getModifiers()) && method.getName().equals("box-impl"));
 
 
 	private final HandlerMethodArgumentResolverComposite resolvers = new HandlerMethodArgumentResolverComposite();
@@ -298,7 +305,7 @@ public class InvocableHandlerMethod extends HandlerMethod {
 		@Nullable
 		@SuppressWarnings("deprecation")
 		public static Object invokeFunction(Method method, Object target, Object[] args, boolean isSuspendingFunction,
-				ServerWebExchange exchange) {
+				ServerWebExchange exchange) throws InvocationTargetException, IllegalAccessException {
 
 			if (isSuspendingFunction) {
 				Object coroutineContext = exchange.getAttribute(COROUTINE_CONTEXT_ATTRIBUTE);
@@ -310,7 +317,11 @@ public class InvocableHandlerMethod extends HandlerMethod {
 				}
 			}
 			else {
-				KFunction<?> function = Objects.requireNonNull(ReflectJvmMapping.getKotlinFunction(method));
+				KFunction<?> function = ReflectJvmMapping.getKotlinFunction(method);
+				// For property accessors
+				if (function == null) {
+					return method.invoke(target, args);
+				}
 				if (method.isAccessible() && !KCallablesJvm.isAccessible(function)) {
 					KCallablesJvm.setAccessible(function, true);
 				}
@@ -319,9 +330,17 @@ public class InvocableHandlerMethod extends HandlerMethod {
 				for (KParameter parameter : function.getParameters()) {
 					switch (parameter.getKind()) {
 						case INSTANCE -> argMap.put(parameter, target);
-						case VALUE -> {
+						case VALUE, EXTENSION_RECEIVER -> {
 							if (!parameter.isOptional() || args[index] != null) {
-								argMap.put(parameter, args[index]);
+								if (parameter.getType().getClassifier() instanceof KClass<?> kClass && kClass.isValue()) {
+									Class<?> javaClass = JvmClassMappingKt.getJavaClass(kClass);
+									Method[] methods = ReflectionUtils.getUniqueDeclaredMethods(javaClass, boxImplFilter);
+									Assert.state(methods.length == 1, "Unable to find a single box-impl synthetic static method in " + javaClass.getName());
+									argMap.put(parameter, ReflectionUtils.invokeMethod(methods[0], null, args[index]));
+								}
+								else {
+									argMap.put(parameter, args[index]);
+								}
 							}
 							index++;
 						}

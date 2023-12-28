@@ -497,16 +497,14 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		if (resolvedClass != null && !mbd.hasBeanClass() && mbd.getBeanClassName() != null) {
 			mbdToUse = new RootBeanDefinition(mbd);
 			mbdToUse.setBeanClass(resolvedClass);
-		}
-
-		// Prepare method overrides.
-		// 准备需要的方法
-		try {
-			mbdToUse.prepareMethodOverrides();
-		}
-		catch (BeanDefinitionValidationException ex) {
-			throw new BeanDefinitionStoreException(mbdToUse.getResourceDescription(),
-					beanName, "Validation of method overrides failed", ex);
+			// 准备需要的方法
+			try {
+				mbdToUse.prepareMethodOverrides();
+			}
+			catch (BeanDefinitionValidationException ex) {
+				throw new BeanDefinitionStoreException(mbdToUse.getResourceDescription(),
+						beanName, "Validation of method overrides failed", ex);
+			}
 		}
 
 		try {

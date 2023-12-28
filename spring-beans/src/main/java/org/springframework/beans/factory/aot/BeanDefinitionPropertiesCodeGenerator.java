@@ -34,6 +34,9 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.springframework.aot.generate.GeneratedMethods;
+import org.springframework.aot.generate.ValueCodeGenerator;
+import org.springframework.aot.generate.ValueCodeGenerator.Delegate;
+import org.springframework.aot.generate.ValueCodeGeneratorDelegates;
 import org.springframework.aot.hint.ExecutableMode;
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
@@ -89,17 +92,22 @@ class BeanDefinitionPropertiesCodeGenerator {
 
 	private final Predicate<String> attributeFilter;
 
-	private final BeanDefinitionPropertyValueCodeGenerator valueCodeGenerator;
+	private final ValueCodeGenerator valueCodeGenerator;
 
 
 	BeanDefinitionPropertiesCodeGenerator(RuntimeHints hints,
 			Predicate<String> attributeFilter, GeneratedMethods generatedMethods,
+			List<Delegate> additionalDelegates,
 			BiFunction<String, Object, CodeBlock> customValueCodeGenerator) {
 
 		this.hints = hints;
 		this.attributeFilter = attributeFilter;
-		this.valueCodeGenerator = new BeanDefinitionPropertyValueCodeGenerator(generatedMethods,
-				(object, type) -> customValueCodeGenerator.apply(PropertyNamesStack.peek(), object));
+		List<Delegate> allDelegates = new ArrayList<>();
+		allDelegates.add((valueCodeGenerator, value) -> customValueCodeGenerator.apply(PropertyNamesStack.peek(), value));
+		allDelegates.addAll(additionalDelegates);
+		allDelegates.addAll(BeanDefinitionPropertyValueCodeGeneratorDelegates.INSTANCES);
+		allDelegates.addAll(ValueCodeGeneratorDelegates.INSTANCES);
+		this.valueCodeGenerator = ValueCodeGenerator.with(allDelegates).scoped(generatedMethods);
 	}
 
 
@@ -166,6 +174,10 @@ class BeanDefinitionPropertiesCodeGenerator {
 		Method method = ReflectionUtils.findMethod(methodDeclaringClass, methodName);
 		if (method != null) {
 			this.hints.reflection().registerMethod(method, ExecutableMode.INVOKE);
+			Method interfaceMethod = ClassUtils.getInterfaceMethodIfPossible(method, beanUserClass);
+			if (!interfaceMethod.equals(method)) {
+				this.hints.reflection().registerMethod(interfaceMethod, ExecutableMode.INVOKE);
+			}
 		}
 	}
 
@@ -362,6 +374,7 @@ class BeanDefinitionPropertiesCodeGenerator {
 		return (castNecessary ? CodeBlock.of("($T) $L", castType, valueCode) : valueCode);
 	}
 
+
 	static class PropertyNamesStack {
 
 		private static final ThreadLocal<ArrayDeque<String>> threadLocal = ThreadLocal.withInitial(ArrayDeque::new);
@@ -380,7 +393,6 @@ class BeanDefinitionPropertiesCodeGenerator {
 			String value = threadLocal.get().peek();
 			return ("".equals(value) ? null : value);
 		}
-
 	}
 
 }

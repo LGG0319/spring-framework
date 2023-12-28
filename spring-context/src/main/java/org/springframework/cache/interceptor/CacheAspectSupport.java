@@ -52,6 +52,7 @@ import org.springframework.core.BridgeMethodResolver;
 import org.springframework.core.KotlinDetector;
 import org.springframework.core.ReactiveAdapter;
 import org.springframework.core.ReactiveAdapterRegistry;
+import org.springframework.core.SpringProperties;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.lang.Nullable;
@@ -94,8 +95,30 @@ import org.springframework.util.function.SupplierUtils;
 public abstract class CacheAspectSupport extends AbstractCacheInvoker
 		implements BeanFactoryAware, InitializingBean, SmartInitializingSingleton {
 
+	/**
+	 * System property that instructs Spring's caching infrastructure to ignore the
+	 * presence of Reactive Streams, in particular Reactor's {@link Mono}/{@link Flux}
+	 * in {@link org.springframework.cache.annotation.Cacheable} method return type
+	 * declarations.
+	 * <p>By default, as of 6.1, Reactive Streams Publishers such as Reactor's
+	 * {@link Mono}/{@link Flux} will be specifically processed for asynchronous
+	 * caching of their produced values rather than trying to cache the returned
+	 * {@code Publisher} instances themselves.
+	 * <p>Switch this flag to "true" in order to ignore Reactive Streams Publishers and
+	 * process them as regular return values through synchronous caching, restoring 6.0
+	 * behavior. Note that this is not recommended and only works in very limited
+	 * scenarios, e.g. with manual {@code Mono.cache()}/{@code Flux.cache()} calls.
+	 * @since 6.1.3
+	 * @see org.reactivestreams.Publisher
+	 */
+	public static final String IGNORE_REACTIVESTREAMS_PROPERTY_NAME = "spring.cache.reactivestreams.ignore";
+
+	private static final boolean shouldIgnoreReactiveStreams =
+			SpringProperties.getFlag(IGNORE_REACTIVESTREAMS_PROPERTY_NAME);
+
 	private static final boolean reactiveStreamsPresent = ClassUtils.isPresent(
 			"org.reactivestreams.Publisher", CacheAspectSupport.class.getClassLoader());
+
 
 	protected final Log logger = LogFactory.getLog(getClass());
 
@@ -124,7 +147,8 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 
 
 	protected CacheAspectSupport() {
-		this.reactiveCachingHandler = (reactiveStreamsPresent ? new ReactiveCachingHandler() : null);
+		this.reactiveCachingHandler =
+				(reactiveStreamsPresent && !shouldIgnoreReactiveStreams ? new ReactiveCachingHandler() : null);
 	}
 
 
@@ -503,6 +527,11 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 	private Object evaluate(@Nullable Object cacheHit, CacheOperationInvoker invoker, Method method,
 			CacheOperationContexts contexts) {
 
+		// Re-invocation in reactive pipeline after late cache hit determination?
+		if (contexts.processed) {
+			return cacheHit;
+		}
+
 		Object cacheValue;
 		Object returnValue;
 
@@ -540,6 +569,9 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 		if (returnOverride != null) {
 			returnValue = returnOverride;
 		}
+
+		// Mark as processed for re-invocation after late cache hit determination
+		contexts.processed = true;
 
 		return returnValue;
 	}
@@ -616,7 +648,7 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 		for (CacheOperationContext context : contexts) {
 			CacheEvictOperation operation = (CacheEvictOperation) context.metadata.operation;
 			if (isConditionPassing(context, result)) {
-				Object key = null;
+				Object key = context.getGeneratedKey();
 				for (Cache cache : context.getCaches()) {
 					if (operation.isCacheWide()) {
 						logInvalidating(context, operation, null);
@@ -642,10 +674,10 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 	}
 
 	/**
-	 * Collect the {@link CachePutRequest} for all {@link CacheOperation} using
-	 * the specified result value.
+	 * Collect a {@link CachePutRequest} for every {@link CacheOperation}
+	 * using the specified result value.
 	 * @param contexts the contexts to handle
-	 * @param result the result value (never {@code null})
+	 * @param result the result value
 	 * @param putRequests the collection to update
 	 */
 	private void collectPutRequests(Collection<CacheOperationContext> contexts,
@@ -673,7 +705,7 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 			throw new IllegalArgumentException("""
 					Null key returned for cache operation [%s]. If you are using named parameters, \
 					ensure that the compiler uses the '-parameters' flag."""
-						.formatted(context.metadata.operation));
+					.formatted(context.metadata.operation));
 		}
 		if (logger.isTraceEnabled()) {
 			logger.trace("Computed cache key '" + key + "' for operation " + context.metadata.operation);
@@ -687,6 +719,8 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 		private final MultiValueMap<Class<? extends CacheOperation>, CacheOperationContext> contexts;
 
 		private final boolean sync;
+
+		boolean processed;
 
 		public CacheOperationContexts(Collection<? extends CacheOperation> operations, Method method,
 				Object[] args, Object target, Class<?> targetClass) {
@@ -798,6 +832,9 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 		@Nullable
 		private Boolean conditionPassing;
 
+		@Nullable
+		private Object key;
+
 		public CacheOperationContext(CacheOperationMetadata metadata, Object[] args, Object target) {
 			this.metadata = metadata;
 			this.args = extractArgs(metadata.method, args);
@@ -873,9 +910,17 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 		protected Object generateKey(@Nullable Object result) {
 			if (StringUtils.hasText(this.metadata.operation.getKey())) {
 				EvaluationContext evaluationContext = createEvaluationContext(result);
-				return evaluator.key(this.metadata.operation.getKey(), this.metadata.methodKey, evaluationContext);
+				this.key = evaluator.key(this.metadata.operation.getKey(), this.metadata.methodKey, evaluationContext);
 			}
-			return this.metadata.keyGenerator.generate(this.target, this.metadata.method, this.args);
+			else {
+				this.key = this.metadata.keyGenerator.generate(this.target, this.metadata.method, this.args);
+			}
+			return this.key;
+		}
+
+		@Nullable
+		protected Object getGeneratedKey() {
+			return this.key;
 		}
 
 		private EvaluationContext createEvaluationContext(@Nullable Object result) {
@@ -969,7 +1014,10 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 
 		public void performCachePut(@Nullable Object value) {
 			if (this.context.canPutToCache(value)) {
-				Object key = generateKey(this.context, value);
+				Object key = this.context.getGeneratedKey();
+				if (key == null) {
+					key = generateKey(this.context, value);
+				}
 				if (logger.isTraceEnabled()) {
 					logger.trace("Creating cache entry for key '" + key + "' in cache(s) " +
 							this.context.getCacheNames());
@@ -1068,19 +1116,23 @@ public abstract class CacheAspectSupport extends AbstractCacheInvoker
 					return null;
 				}
 				if (adapter.isMultiValue()) {
-					return adapter.fromPublisher(Flux.from(
-							Mono.fromFuture(cachedFuture)
-									.flatMap(value -> (Mono<?>) evaluate(Mono.justOrEmpty(unwrapCacheValue(value)), invoker, method, contexts)))
-							.flatMap(v -> (v instanceof Iterable<?> iv ? Flux.fromIterable(iv) : Flux.just(v)))
-							.switchIfEmpty(Flux.defer(() -> (Flux<?>) evaluate(null, invoker, method, contexts))));
+					return adapter.fromPublisher(Flux.from(Mono.fromFuture(cachedFuture))
+							.switchIfEmpty(Flux.defer(() -> (Flux) evaluate(null, invoker, method, contexts)))
+							.flatMap(v -> evaluate(valueToFlux(v, contexts), invoker, method, contexts)));
 				}
 				else {
 					return adapter.fromPublisher(Mono.fromFuture(cachedFuture)
-							.flatMap(value -> (Mono<?>) evaluate(Mono.justOrEmpty(unwrapCacheValue(value)), invoker, method, contexts))
-							.switchIfEmpty(Mono.defer(() -> (Mono) evaluate(null, invoker, method, contexts))));
+							.switchIfEmpty(Mono.defer(() -> (Mono) evaluate(null, invoker, method, contexts)))
+							.flatMap(v -> evaluate(Mono.justOrEmpty(unwrapCacheValue(v)), invoker, method, contexts)));
 				}
 			}
 			return NOT_HANDLED;
+		}
+
+		private Flux<?> valueToFlux(Object value, CacheOperationContexts contexts) {
+			Object data = unwrapCacheValue(value);
+			return (!contexts.processed && data instanceof Iterable<?> iterable ? Flux.fromIterable(iterable) :
+					(data != null ? Flux.just(data) : Flux.empty()));
 		}
 
 		@Nullable

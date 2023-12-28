@@ -27,6 +27,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -203,8 +205,12 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	/** Flag that indicates whether this context has been closed already. */
 	private final AtomicBoolean closed = new AtomicBoolean();
 
-	/** Synchronization monitor for the "refresh" and "destroy". */
-	private final Object startupShutdownMonitor = new Object();
+	/** Synchronization lock for "refresh" and "close". */
+	private final Lock startupShutdownLock = new ReentrantLock();
+
+	/** Currently active startup/shutdown thread. */
+	@Nullable
+	private volatile Thread startupShutdownThread;
 
 	/** Reference to the JVM shutdown hook, if registered. */
 	@Nullable
@@ -585,8 +591,10 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	@Override
 	public void refresh() throws BeansException, IllegalStateException {
 		// 同步监视器（刷新、同步）
-		synchronized (this.startupShutdownMonitor) {
-			// spring启动第二步 刷新配置
+		this.startupShutdownLock.lock();
+		try {
+			this.startupShutdownThread = Thread.currentThread();
+		// spring启动第二步 刷新配置
 			StartupStep contextRefresh = this.applicationStartup.start("spring.context.refresh");
 
 			// Prepare this context for refreshing.
@@ -650,6 +658,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 					logger.warn("Exception encountered during context initialization - " +
 							"cancelling refresh attempt: " + ex);
 				}
+
 				// Destroy already created singletons to avoid dangling resources.
 				// 销毁已创建的singleton以避免挂起资源
 				destroyBeans();
@@ -666,6 +675,10 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 			finally {
 				contextRefresh.end();
 			}
+		}
+		finally {
+			this.startupShutdownThread = null;
+			this.startupShutdownLock.unlock();
 		}
 	}
 
@@ -1100,13 +1113,45 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 			this.shutdownHook = new Thread(SHUTDOWN_HOOK_THREAD_NAME) {
 				@Override
 				public void run() {
-					synchronized (startupShutdownMonitor) {
+					if (isStartupShutdownThreadStuck()) {
+						active.set(false);
+						return;
+					}
+					startupShutdownLock.lock();
+					try {
 						doClose();
+					}
+					finally {
+						startupShutdownLock.unlock();
 					}
 				}
 			};
 			Runtime.getRuntime().addShutdownHook(this.shutdownHook);
 		}
+	}
+
+	/**
+	 * Determine whether an active startup/shutdown thread is currently stuck,
+	 * e.g. through a {@code System.exit} call in a user component.
+	 */
+	private boolean isStartupShutdownThreadStuck() {
+		Thread activeThread = this.startupShutdownThread;
+		if (activeThread != null && activeThread.getState() == Thread.State.WAITING) {
+			// Indefinitely waiting: might be Thread.join or the like, or System.exit
+			activeThread.interrupt();
+			try {
+				// Leave just a little bit of time for the interruption to show effect
+				Thread.sleep(1);
+			}
+			catch (InterruptedException ex) {
+				Thread.currentThread().interrupt();
+			}
+			if (activeThread.getState() == Thread.State.WAITING) {
+				// Interrupted but still waiting: very likely a System.exit call
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -1118,8 +1163,17 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 */
 	@Override
 	public void close() {
-		synchronized (this.startupShutdownMonitor) {
+		if (isStartupShutdownThreadStuck()) {
+			this.active.set(false);
+			return;
+		}
+
+		this.startupShutdownLock.lock();
+		try {
+			this.startupShutdownThread = Thread.currentThread();
+
 			doClose();
+
 			// If we registered a JVM shutdown hook, we don't need it anymore now:
 			// We've already explicitly closed the context.
 			if (this.shutdownHook != null) {
@@ -1130,6 +1184,10 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 					// ignore - VM is already shutting down
 				}
 			}
+		}
+		finally {
+			this.startupShutdownThread = null;
+			this.startupShutdownLock.unlock();
 		}
 	}
 

@@ -38,8 +38,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  * @author Chris Beams
  * @since 13.03.2003
  */
-@SuppressWarnings("serial")
-public class JdkDynamicProxyTests extends AbstractAopProxyTests implements Serializable {
+class JdkDynamicProxyTests extends AbstractAopProxyTests implements Serializable {
 
 	@Override
 	protected Object createProxy(ProxyCreatorSupport as) {
@@ -56,13 +55,12 @@ public class JdkDynamicProxyTests extends AbstractAopProxyTests implements Seria
 
 
 	@Test
-	public void testNullConfig() {
-		assertThatIllegalArgumentException().isThrownBy(() ->
-				new JdkDynamicAopProxy(null));
+	void testNullConfig() {
+		assertThatIllegalArgumentException().isThrownBy(() -> new JdkDynamicAopProxy(null));
 	}
 
 	@Test
-	public void testProxyIsJustInterface() {
+	void testProxyIsJustInterface() {
 		TestBean raw = new TestBean();
 		raw.setAge(32);
 		AdvisedSupport pc = new AdvisedSupport(ITestBean.class);
@@ -70,14 +68,12 @@ public class JdkDynamicProxyTests extends AbstractAopProxyTests implements Seria
 		JdkDynamicAopProxy aop = new JdkDynamicAopProxy(pc);
 
 		Object proxy = aop.getProxy();
-		boolean condition = proxy instanceof ITestBean;
-		assertThat(condition).isTrue();
-		boolean condition1 = proxy instanceof TestBean;
-		assertThat(condition1).isFalse();
+		assertThat(proxy instanceof ITestBean).isTrue();
+		assertThat(proxy instanceof TestBean).isFalse();
 	}
 
 	@Test
-	public void testInterceptorIsInvokedWithNoTarget() {
+	void testInterceptorIsInvokedWithNoTarget() {
 		// Test return value
 		final int age = 25;
 		MethodInterceptor mi = (invocation -> age);
@@ -91,7 +87,7 @@ public class JdkDynamicProxyTests extends AbstractAopProxyTests implements Seria
 	}
 
 	@Test
-	public void testTargetCanGetInvocationWithPrivateClass() {
+	void testTargetCanGetInvocationWithPrivateClass() {
 		final ExposedInvocationTestBean expectedTarget = new ExposedInvocationTestBean() {
 			@Override
 			protected void assertions(MethodInvocation invocation) {
@@ -119,7 +115,7 @@ public class JdkDynamicProxyTests extends AbstractAopProxyTests implements Seria
 	}
 
 	@Test
-	public void testProxyNotWrappedIfIncompatible() {
+	void testProxyNotWrappedIfIncompatible() {
 		FooBar bean = new FooBar();
 		ProxyCreatorSupport as = new ProxyCreatorSupport();
 		as.setInterfaces(Foo.class);
@@ -131,19 +127,22 @@ public class JdkDynamicProxyTests extends AbstractAopProxyTests implements Seria
 	}
 
 	@Test
-	public void testEqualsAndHashCodeDefined() {
-		AdvisedSupport as = new AdvisedSupport(Named.class);
-		as.setTarget(new Person());
-		JdkDynamicAopProxy aopProxy = new JdkDynamicAopProxy(as);
-		Named proxy = (Named) aopProxy.getProxy();
+	void testEqualsAndHashCodeDefined() {
 		Named named = new Person();
+		AdvisedSupport as = new AdvisedSupport(Named.class);
+		as.setTarget(named);
+
+		Named proxy = (Named) new JdkDynamicAopProxy(as).getProxy();
+		assertThat(proxy).isEqualTo(named);
+		assertThat(named.hashCode()).isEqualTo(proxy.hashCode());
+
+		proxy = (Named) new JdkDynamicAopProxy(as).getProxy();
 		assertThat(proxy).isEqualTo(named);
 		assertThat(named.hashCode()).isEqualTo(proxy.hashCode());
 	}
 
 	@Test  // SPR-13328
-	@SuppressWarnings("unchecked")
-	public void testVarargsWithEnumArray() {
+	void testVarargsWithEnumArray() {
 		ProxyFactory proxyFactory = new ProxyFactory(new VarargTestBean());
 		VarargTestInterface proxy = (VarargTestInterface) proxyFactory.getProxy();
 		assertThat(proxy.doWithVarargs(MyEnum.A, MyOtherEnum.C)).isTrue();

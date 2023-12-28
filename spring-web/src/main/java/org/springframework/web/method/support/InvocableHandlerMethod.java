@@ -18,11 +18,13 @@ package org.springframework.web.method.support;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Map;
-import java.util.Objects;
 
 import kotlin.Unit;
+import kotlin.jvm.JvmClassMappingKt;
+import kotlin.reflect.KClass;
 import kotlin.reflect.KFunction;
 import kotlin.reflect.KParameter;
 import kotlin.reflect.jvm.KCallablesJvm;
@@ -35,8 +37,10 @@ import org.springframework.core.KotlinDetector;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.ParameterNameDiscoverer;
 import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
+import org.springframework.util.ReflectionUtils;
 import org.springframework.validation.method.MethodValidator;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.support.SessionStatus;
@@ -59,6 +63,9 @@ public class InvocableHandlerMethod extends HandlerMethod {
 	private static final Object[] EMPTY_ARGS = new Object[0];
 
 	private static final Class<?>[] EMPTY_GROUPS = new Class<?>[0];
+
+	private static final ReflectionUtils.MethodFilter boxImplFilter =
+			(method -> method.isSynthetic() && Modifier.isStatic(method.getModifiers()) && method.getName().equals("box-impl"));
 
 
 	private HandlerMethodArgumentResolverComposite resolvers = new HandlerMethodArgumentResolverComposite();
@@ -298,8 +305,12 @@ public class InvocableHandlerMethod extends HandlerMethod {
 
 		@Nullable
 		@SuppressWarnings("deprecation")
-		public static Object invokeFunction(Method method, Object target, Object[] args) {
-			KFunction<?> function = Objects.requireNonNull(ReflectJvmMapping.getKotlinFunction(method));
+		public static Object invokeFunction(Method method, Object target, Object[] args) throws InvocationTargetException, IllegalAccessException {
+			KFunction<?> function = ReflectJvmMapping.getKotlinFunction(method);
+			// For property accessors
+			if (function == null) {
+				return method.invoke(target, args);
+			}
 			if (method.isAccessible() && !KCallablesJvm.isAccessible(function)) {
 				KCallablesJvm.setAccessible(function, true);
 			}
@@ -308,9 +319,17 @@ public class InvocableHandlerMethod extends HandlerMethod {
 			for (KParameter parameter : function.getParameters()) {
 				switch (parameter.getKind()) {
 					case INSTANCE -> argMap.put(parameter, target);
-					case VALUE -> {
+					case VALUE, EXTENSION_RECEIVER -> {
 						if (!parameter.isOptional() || args[index] != null) {
-							argMap.put(parameter, args[index]);
+							if (parameter.getType().getClassifier() instanceof KClass<?> kClass && kClass.isValue()) {
+								Class<?> javaClass = JvmClassMappingKt.getJavaClass(kClass);
+								Method[] methods = ReflectionUtils.getUniqueDeclaredMethods(javaClass, boxImplFilter);
+								Assert.state(methods.length == 1, "Unable to find a single box-impl synthetic static method in " + javaClass.getName());
+								argMap.put(parameter, ReflectionUtils.invokeMethod(methods[0], null, args[index]));
+							}
+							else {
+								argMap.put(parameter, args[index]);
+							}
 						}
 						index++;
 					}

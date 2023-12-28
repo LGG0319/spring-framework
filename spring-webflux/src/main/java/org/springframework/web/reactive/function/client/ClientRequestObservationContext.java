@@ -50,9 +50,26 @@ public class ClientRequestObservationContext extends RequestReplySenderContext<C
 	private ClientRequest request;
 
 
+	/**
+	 * Create a new Observation context for HTTP client observations.
+	 * @deprecated as of 6.1.2, in favor of {@link #ClientRequestObservationContext(ClientRequest.Builder)}
+	 */
+	@Deprecated(since = "6.1.2", forRemoval = true)
 	public ClientRequestObservationContext() {
 		super(ClientRequestObservationContext::setRequestHeader);
 	}
+
+	/**
+	 * Create a new Observation context for HTTP client observations.
+	 * @param request client request builder
+	 * @since 6.1.2
+	 */
+	public ClientRequestObservationContext(ClientRequest.Builder request) {
+		super(ClientRequestObservationContext::setRequestHeader);
+		setCarrier(request);
+		setRequest(request.build());
+	}
+
 
 	private static void setRequestHeader(@Nullable ClientRequest.Builder request, String name, String value) {
 		if (request != null) {

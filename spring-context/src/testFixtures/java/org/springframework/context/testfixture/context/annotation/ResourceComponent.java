@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,32 @@
  * limitations under the License.
  */
 
-package org.springframework.beans.factory.aot;
+package org.springframework.context.testfixture.context.annotation;
 
-/**
- * Fake CGLIB generated class.
- *
- * @author Phillip Webb
- */
-class ExampleClass$$GeneratedBy extends ExampleClass {
+import jakarta.annotation.Resource;
+
+public class ResourceComponent {
+
+	private String text;
+
+	private Integer counter;
+
+	public String getText() {
+		return this.text;
+	}
+
+	@Resource
+	public void setText(String text) {
+		this.text = text;
+	}
+
+	public Integer getCounter() {
+		return this.counter;
+	}
+
+	@Resource
+	public void setCounter(Integer counter) {
+		this.counter = counter;
+	}
 
 }
