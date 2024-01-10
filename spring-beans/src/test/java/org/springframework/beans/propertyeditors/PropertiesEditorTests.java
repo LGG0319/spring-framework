@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2023 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,10 +32,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Juergen Hoeller
  * @author Rick Evans
  */
-public class PropertiesEditorTests {
+class PropertiesEditorTests {
 
 	@Test
-	public void oneProperty() {
+	void oneProperty() {
 		String s = "foo=bar";
 		PropertiesEditor pe= new PropertiesEditor();
 		pe.setAsText(s);
@@ -45,7 +45,7 @@ public class PropertiesEditorTests {
 	}
 
 	@Test
-	public void twoProperties() {
+	void twoProperties() {
 		String s = "foo=bar with whitespace\n" +
 			"me=mi";
 		PropertiesEditor pe= new PropertiesEditor();
@@ -57,10 +57,11 @@ public class PropertiesEditorTests {
 	}
 
 	@Test
-	public void handlesEqualsInValue() {
-		String s = "foo=bar\n" +
-			"me=mi\n" +
-			"x=y=z";
+	void handlesEqualsInValue() {
+		String s = """
+				foo=bar
+				me=mi
+				x=y=z""";
 		PropertiesEditor pe= new PropertiesEditor();
 		pe.setAsText(s);
 		Properties p = (Properties) pe.getValue();
@@ -71,7 +72,7 @@ public class PropertiesEditorTests {
 	}
 
 	@Test
-	public void handlesEmptyProperty() {
+	void handlesEmptyProperty() {
 		String s = "foo=bar\nme=mi\nx=";
 		PropertiesEditor pe= new PropertiesEditor();
 		pe.setAsText(s);
@@ -83,7 +84,7 @@ public class PropertiesEditorTests {
 	}
 
 	@Test
-	public void handlesEmptyPropertyWithoutEquals() {
+	void handlesEmptyPropertyWithoutEquals() {
 		String s = "foo\nme=mi\nx=x";
 		PropertiesEditor pe= new PropertiesEditor();
 		pe.setAsText(s);
@@ -97,13 +98,15 @@ public class PropertiesEditorTests {
 	 * Comments begin with #
 	 */
 	@Test
-	public void ignoresCommentLinesAndEmptyLines() {
-		String s = "#Ignore this comment\n" +
-			"foo=bar\n" +
-			"#Another=comment more junk /\n" +
-			"me=mi\n" +
-			"x=x\n" +
-			"\n";
+	void ignoresCommentLinesAndEmptyLines() {
+		String s = """
+				#Ignore this comment
+				foo=bar
+				#Another=comment more junk /
+				me=mi
+				x=x
+
+				""";
 		PropertiesEditor pe= new PropertiesEditor();
 		pe.setAsText(s);
 		Properties p = (Properties) pe.getValue();
@@ -119,7 +122,7 @@ public class PropertiesEditorTests {
 	 * still ignored: The standard syntax doesn't allow this on JDK 1.3.
 	 */
 	@Test
-	public void ignoresLeadingSpacesAndTabs() {
+	void ignoresLeadingSpacesAndTabs() {
 		String s = "    #Ignore this comment\n" +
 			"\t\tfoo=bar\n" +
 			"\t#Another comment more junk \n" +
@@ -135,7 +138,7 @@ public class PropertiesEditorTests {
 	}
 
 	@Test
-	public void nullValue() {
+	void nullValue() {
 		PropertiesEditor pe= new PropertiesEditor();
 		pe.setAsText(null);
 		Properties p = (Properties) pe.getValue();
@@ -143,7 +146,7 @@ public class PropertiesEditorTests {
 	}
 
 	@Test
-	public void emptyString() {
+	void emptyString() {
 		PropertiesEditor pe = new PropertiesEditor();
 		pe.setAsText("");
 		Properties p = (Properties) pe.getValue();
@@ -151,7 +154,7 @@ public class PropertiesEditorTests {
 	}
 
 	@Test
-	public void usingMapAsValueSource() {
+	void usingMapAsValueSource() {
 		Map<String, String> map = new HashMap<>();
 		map.put("one", "1");
 		map.put("two", "2");
