@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2023 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Unit tests for {@link RequestHeaderMethodArgumentResolver}.
+ * Tests for {@link RequestHeaderMethodArgumentResolver}.
  *
  * @author Arjen Poutsma
  * @author Rossen Stoyanchev
@@ -76,7 +76,6 @@ class RequestHeaderMethodArgumentResolverTests {
 
 
 	@BeforeEach
-	@SuppressWarnings("resource")
 	void setup() throws Exception {
 		GenericWebApplicationContext context = new GenericWebApplicationContext();
 		context.refresh();
@@ -197,7 +196,7 @@ class RequestHeaderMethodArgumentResolverTests {
 	}
 
 	@Test
-	void notFound() throws Exception {
+	void notFound() {
 		assertThatExceptionOfType(ServletRequestBindingException.class).isThrownBy(() ->
 				resolver.resolveArgument(paramNamedValueStringArray, null, webRequest, null));
 	}
@@ -256,16 +255,16 @@ class RequestHeaderMethodArgumentResolverTests {
 	}
 
 	@Test
-	void uuidConversionWithEmptyValue() throws Exception {
+	void uuidConversionWithEmptyValue() {
 		uuidConversionWithEmptyOrBlankValue("");
 	}
 
 	@Test
-	void uuidConversionWithBlankValue() throws Exception {
+	void uuidConversionWithBlankValue() {
 		uuidConversionWithEmptyOrBlankValue("     ");
 	}
 
-	private void uuidConversionWithEmptyOrBlankValue(String uuid) throws Exception {
+	private void uuidConversionWithEmptyOrBlankValue(String uuid) {
 		servletRequest.addHeader("name", uuid);
 
 		ConfigurableWebBindingInitializer bindingInitializer = new ConfigurableWebBindingInitializer();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2023 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -54,7 +55,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 /**
- * Unit tests for {@link DefaultWebClient}.
+ * Tests for {@link DefaultWebClient}.
  *
  * @author Rossen Stoyanchev
  * @author Brian Clozel
@@ -110,7 +111,7 @@ public class DefaultWebClientTests {
 
 		ClientRequest request = verifyAndGetRequest();
 		assertThat(request.url().toString()).isEqualTo("/base/path/identifier?q=12");
-		assertThat(request.attribute(WebClient.class.getName() + ".uriTemplate")).contains("/path/{id}");
+		assertThat(request.attribute(WebClient.class.getName() + ".uriTemplate")).contains("/base/path/{id}");
 	}
 
 	@Test
@@ -361,6 +362,30 @@ public class DefaultWebClientTests {
 
 		ClientRequest request = verifyAndGetRequest();
 		assertThat(request.attribute("foo")).isNotPresent();
+	}
+
+	@Test
+	public void uriTemplateAttribute() {
+		testUriTemplateAttribute(client -> client.get().uri("/{id}", 1), "/base/{id}");
+		testUriTemplateAttribute(client -> client.get().uri("/{id}", Map.of("id", 1)), "/base/{id}");
+		testUriTemplateAttribute(client -> client.get().uri("/{id}", builder -> builder.build(1)), "/base/{id}");
+	}
+
+	private void testUriTemplateAttribute(
+			Function<WebClient, WebClient.RequestHeadersSpec<?>> requestFn, String expectedPath) {
+
+		Map<String, Object> actual = new HashMap<>();
+		ExchangeFilterFunction filter = (request, next) -> {
+			actual.putAll(request.attributes());
+			return next.exchange(request);
+		};
+
+		requestFn.apply(this.builder.filter(filter).build())
+				.retrieve().bodyToMono(Void.class)
+				.block(Duration.ofSeconds(10));
+
+		String key = WebClient.class.getName() + ".uriTemplate";
+		assertThat(actual.get(key)).isEqualTo(expectedPath);
 	}
 
 	@Test

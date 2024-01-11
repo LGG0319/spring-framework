@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2023 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,11 +41,11 @@ import static org.springframework.core.ResolvableType.forClass;
 import static org.springframework.core.io.buffer.DataBufferUtils.release;
 
 /**
- * Unit tests for {@link ProtobufDecoder}.
+ * Tests for {@link ProtobufDecoder}.
  *
  * @author Sebastien Deleuze
  */
-public class ProtobufDecoderTests extends AbstractDecoderTests<ProtobufDecoder> {
+class ProtobufDecoderTests extends AbstractDecoderTests<ProtobufDecoder> {
 
 	private final SecondMsg secondMsg = SecondMsg.newBuilder().setBlah(123).build();
 
@@ -61,7 +61,7 @@ public class ProtobufDecoderTests extends AbstractDecoderTests<ProtobufDecoder> 
 
 
 	@Test
-	public void extensionRegistryNull() {
+	void extensionRegistryNull() {
 		assertThatIllegalArgumentException().isThrownBy(() -> new ProtobufDecoder(null));
 	}
 
@@ -86,7 +86,7 @@ public class ProtobufDecoderTests extends AbstractDecoderTests<ProtobufDecoder> 
 	}
 
 	@Test
-	public void decodeChunksToMono() {
+	void decodeChunksToMono() {
 		byte[] full = this.testMsg1.toByteArray();
 		byte[] chunk1 = Arrays.copyOfRange(full, 0, full.length / 2);
 		byte[] chunk2 = Arrays.copyOfRange(full, chunk1.length, full.length);
@@ -211,7 +211,7 @@ public class ProtobufDecoderTests extends AbstractDecoderTests<ProtobufDecoder> 
 	}
 
 	@Test
-	public void exceedMaxSize() {
+	void exceedMaxSize() {
 		this.decoder.setMaxMessageSize(1);
 		Mono<DataBuffer> input = dataBuffer(this.testMsg1);
 

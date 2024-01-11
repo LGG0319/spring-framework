@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2023 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,6 +63,7 @@ import org.springframework.web.context.support.StaticWebApplicationContext;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.DispatcherServlet;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.NoHandlerFoundException;
@@ -76,10 +77,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.mock;
 
 /**
- * Unit tests for {@link ResponseEntityExceptionHandler}.
+ * Tests for {@link ResponseEntityExceptionHandler}.
  *
  * @author Rossen Stoyanchev
  * @author Sebastien Deleuze
+ * @author Yanming Zhou
  */
 public class ResponseEntityExceptionHandlerTests {
 
@@ -199,6 +201,30 @@ public class ResponseEntityExceptionHandlerTests {
 		}
 	}
 
+	@Test // gh-30300
+	public void reasonAsDetailShouldBeUpdatedViaMessageSource() {
+
+		Locale locale = Locale.UK;
+		LocaleContextHolder.setLocale(locale);
+
+		String reason = "bad.request";
+		String message = "Breaking Bad Request";
+		try {
+			StaticMessageSource messageSource = new StaticMessageSource();
+			messageSource.addMessage(reason, locale, message);
+
+			this.exceptionHandler.setMessageSource(messageSource);
+
+			ResponseEntity<?> entity = testException(new ResponseStatusException(HttpStatus.BAD_REQUEST, reason));
+
+			ProblemDetail body = (ProblemDetail) entity.getBody();
+			assertThat(body.getDetail()).isEqualTo(message);
+		}
+		finally {
+			LocaleContextHolder.resetLocaleContext();
+		}
+	}
+
 	@Test
 	public void conversionNotSupported() {
 		testException(new ConversionNotSupportedException(new Object(), Object.class, null));
@@ -297,6 +323,15 @@ public class ResponseEntityExceptionHandlerTests {
 		testException(new MaxUploadSizeExceededException(1000));
 	}
 
+	@Test // gh-14287, gh-31541
+	void serverErrorWithoutBody() {
+		HttpStatusCode code = HttpStatusCode.valueOf(500);
+		Exception ex = new IllegalStateException("internal error");
+		this.exceptionHandler.handleExceptionInternal(ex, null, new HttpHeaders(), code, this.request);
+
+		assertThat(this.servletRequest.getAttribute("jakarta.servlet.error.exception")).isSameAs(ex);
+	}
+
 	@Test
 	public void controllerAdvice() throws Exception {
 		StaticWebApplicationContext ctx = new StaticWebApplicationContext();
@@ -373,11 +408,6 @@ public class ResponseEntityExceptionHandlerTests {
 		try {
 			ResponseEntity<Object> entity = this.exceptionHandler.handleException(ex, this.request);
 			assertThat(entity).isNotNull();
-
-			// SPR-9653
-			if (HttpStatus.INTERNAL_SERVER_ERROR.equals(entity.getStatusCode())) {
-				assertThat(this.servletRequest.getAttribute("jakarta.servlet.error.exception")).isSameAs(ex);
-			}
 
 			// Verify DefaultHandlerExceptionResolver would set the same status
 			this.exceptionResolver.resolveException(this.servletRequest, this.servletResponse, null, ex);
