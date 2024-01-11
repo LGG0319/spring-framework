@@ -117,6 +117,7 @@ import org.springframework.lang.Nullable;
  * @see DisposableBean#destroy
  * @see org.springframework.beans.factory.support.RootBeanDefinition#getDestroyMethodName
  * Spring bean容器的根接口
+ * 提供获取Bean、获取BeanFactory、判断是否包含Bean、Bean的单例多例、获取Bean的类型以及别名
  */
 public interface BeanFactory {
 
