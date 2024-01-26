@@ -260,6 +260,9 @@ public class AnnotatedBeanDefinitionReader {
 			@Nullable BeanDefinitionCustomizer[] customizers) {
 
 		// 根据传入配置信息（配置类）判断是否需要解析class为BeanDefinition,不需要则跳过（是否满足@Conditional注解要求）
+		// true : 1. @Component、@ComponentScan、@Import、@ImportResource与@Conditional联用，且@Conditional条件不满足
+		// false : 1.没有@Conditional
+        //         2.@Component、@ComponentScan、@Import、@ImportResource与@Conditional联用，且@Conditional条件满足
 		AnnotatedGenericBeanDefinition abd = new AnnotatedGenericBeanDefinition(beanClass);
 		if (this.conditionEvaluator.shouldSkip(abd.getMetadata())) {
 			return;

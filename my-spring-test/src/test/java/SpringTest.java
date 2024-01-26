@@ -1,6 +1,7 @@
 import myspring.Message.MessageSourceTest;
 import myspring.config.AppConfig;
 import myspring.eventPublish.PublishService;
+import myspring.propertySource.MyPropertySource;
 import myspring.service.ResourceLoaderAwareService;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import myspring.service.HelloService;
@@ -10,7 +11,7 @@ public class SpringTest {
 
 	public static void main(String[] args) {
 
-		AnnotationConfigApplicationContext ac = new AnnotationConfigApplicationContext(AppConfig.class);
+		AnnotationConfigApplicationContext ac = new MyPropertySource(AppConfig.class);
 
 		HelloService helloService = ac.getBean(HelloService.class);
 

@@ -703,13 +703,15 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		}
 
 		// Initialize any placeholder property sources in the context environment.
+		// 预留接口，便于子类功能扩展
 		// 在上下文环境中初始化任何占位符属性源(空方法)
+		// 再xml文件中也看人能会有${}这样的占位符，可以在这里设置属性之后解析
 		initPropertySources();
 
 		// Validate that all properties marked as required are resolvable:
 		// see ConfigurablePropertyResolver#setRequiredProperties
-		// 校验配置文件
-		// 如果存在key为null会发抛出异常
+		// 1、检查是否存在环境变量如果存在直接用,不存在重更新获取
+		// 2、创建并获取环境对象、验证需要的属性文件是否符合
 		getEnvironment().validateRequiredProperties();
 
 		// Store pre-refresh ApplicationListeners...
@@ -736,6 +738,8 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 * @see org.springframework.web.context.support.WebApplicationContextUtils#initServletPropertySources
 	 */
 	protected void initPropertySources() {
+		// 获取系统环境变量 getEnvironment().getSystemEnvironment().forEach((k,v) -> System.out.println(k + " " + v));
+		//例如：getEnvironment().setRequiredProperties("NODE_PATH");
 		// For subclasses: do nothing by default.
 	}
 
