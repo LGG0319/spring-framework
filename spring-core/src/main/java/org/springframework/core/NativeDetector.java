@@ -20,9 +20,13 @@ import org.springframework.lang.Nullable;
 
 /**
  * A common delegate for detecting a GraalVM native image environment.
- *
+ * GraalVM是 Oracle 开源的一款通用虚拟机产品，官方称之为 Universal GraalVM，是新一代的通用多语言高性能虚拟机。
+ * 它可以运行多种编程语言，如Java、JavaScript、Python等，并提供了即时编译（JIT）和AOT编译（AOT）的支持。
+ * GraalVM还支持在不同语言之间互相调用，以及嵌入到其他应用程序中使用。
+ * <a href="https://blog.csdn.net/truelove12358/article/details/131214457">GraalVM</a>
  * @author Sebastien Deleuze
  * @since 5.3.4
+ * 用于检测GraalVM本机映像环境的常见委托
  */
 public abstract class NativeDetector {
 

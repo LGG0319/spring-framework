@@ -988,7 +988,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			}
 		}
 
-		// Trigger post-initialization callback for all applicable beans...
+		// Trigger post-initialization callback for all applicable beans...(触发所有适用bean的初始化后回调)
 		// 7、遍历beanNames，触发所有SmartInitializingSingleton的后初始化回调
 		for (String beanName : beanNames) {
 			Object singletonInstance = getSingleton(beanName);

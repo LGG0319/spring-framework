@@ -86,11 +86,15 @@ final class PostProcessorRegistrationDelegate {
 		Set<String> processedBeans = new HashSet<>();
 
 		// 判断beanFactory是否为BeanDefinitionRegistry（保存bean定义的注册中心接口）
+		// true: 1.将后置处理器分为regularPostProcessors（常规后置处理器）与registryProcessors(注册后置处理器)
+		//       2.找出实现了@Order的处理器执行，执行regularPostProcessors（常规后置处理器）与registryProcessors(注册后置处理器)
+		//       3.
+		// false : 直接执行 BeanFactoryPostProcessor.postProcessBeanFactory
 		if (beanFactory instanceof BeanDefinitionRegistry registry) {
 			// 常规后置处理器，用来存放BeanFactoryPostProcessor对象
 			List<BeanFactoryPostProcessor> regularPostProcessors = new ArrayList<>();
 			// 注册后置处理器，用来存放BeanDefinitionRegistryPostProcessor对象
-			//方便统一执行实现了BeanDefinitionRegistryPostProcessor接口父类的方法
+			// 方便统一执行实现了BeanDefinitionRegistryPostProcessor接口父类的方法
 			List<BeanDefinitionRegistryPostProcessor> registryProcessors = new ArrayList<>();
 			// 遍历所有实现BeanFactoryPostProcessor的bean
 			for (BeanFactoryPostProcessor postProcessor : beanFactoryPostProcessors) {
