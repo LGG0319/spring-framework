@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2023 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,17 +73,17 @@ class SpelDocumentationTests extends AbstractExpressionTests {
 
 	@Test
 	void methodInvocation() {
-		evaluate("'Hello World'.concat('!')","Hello World!",String.class);
+		evaluate("'Hello World'.concat('!')", "Hello World!", String.class);
 	}
 
 	@Test
 	void beanPropertyAccess() {
-		evaluate("new String('Hello World'.bytes)","Hello World",String.class);
+		evaluate("new String('Hello World'.bytes)", "Hello World", String.class);
 	}
 
 	@Test
 	void arrayLengthAccess() {
-		evaluate("'Hello World'.bytes.length",11,Integer.class);
+		evaluate("'Hello World'.bytes.length", 11, Integer.class);
 	}
 
 	@Test
@@ -277,66 +277,122 @@ class SpelDocumentationTests extends AbstractExpressionTests {
 		assertThat(falseValue).isFalse();
 
 		// -- AND and NOT --
+
 		expression = "isMember('Nikola Tesla') and !isMember('Mihajlo Pupin')";
 		falseValue = parser.parseExpression(expression).getValue(societyContext, Boolean.class);
 		assertThat(falseValue).isFalse();
 	}
 
 	@Test
-	void numericalOperators() {
-		// Addition
-		int two = parser.parseExpression("1 + 1").getValue(Integer.class); // 2
+	void stringOperators() {
+		// -- Concatenation --
+
+		// evaluates to "hello world"
+		String helloWorld = parser.parseExpression("'hello' + ' ' + 'world'").getValue(String.class);
+		assertThat(helloWorld).isEqualTo("hello world");
+
+		// -- Subtraction --
+
+		// evaluates to 'a'
+		char ch = parser.parseExpression("'d' - 3").getValue(char.class);
+		assertThat(ch).isEqualTo('a');
+
+		// -- Repeat --
+
+		// evaluates to "abcabc"
+		String repeated = parser.parseExpression("'abc' * 2").getValue(String.class);
+		assertThat(repeated).isEqualTo("abcabc");
+	}
+
+	@Test
+	void mathematicalOperators() {
+		Inventor inventor = new Inventor();
+		EvaluationContext context = SimpleEvaluationContext.forReadWriteDataBinding().build();
+
+		// -- Addition --
+
+		int two = parser.parseExpression("1 + 1").getValue(int.class);  // 2
 		assertThat(two).isEqualTo(2);
 
-		String testString = parser.parseExpression("'test' + ' ' + 'string'").getValue(String.class); // 'test string'
-		assertThat(testString).isEqualTo("test string");
+		// -- Subtraction --
 
-		// Subtraction
-		int four = parser.parseExpression("1 - -3").getValue(Integer.class); // 4
+		int four = parser.parseExpression("1 - -3").getValue(int.class);  // 4
 		assertThat(four).isEqualTo(4);
 
-		double d = parser.parseExpression("1000.00 - 1e4").getValue(Double.class); // -9000
+		double d = parser.parseExpression("1000.00 - 1e4").getValue(double.class);  // -9000
 		assertThat(d).isCloseTo(-9000.0d, within((double) 0));
 
-		// Multiplication
-		int six = parser.parseExpression("-2 * -3").getValue(Integer.class); // 6
+		// -- Increment --
+
+		// The counter property in Inventor has an initial value of 0.
+
+		// evaluates to 2; counter is now 1
+		two = parser.parseExpression("counter++ + 2").getValue(context, inventor, int.class);
+		assertThat(two).isEqualTo(2);
+
+		// evaluates to 5; counter is now 2
+		int five = parser.parseExpression("3 + ++counter").getValue(context, inventor, int.class);
+		assertThat(five).isEqualTo(5);
+
+		// -- Decrement --
+
+		// The counter property in Inventor has a value of 2.
+
+		// evaluates to 6; counter is now 1
+		int six = parser.parseExpression("counter-- + 4").getValue(context, inventor, int.class);
 		assertThat(six).isEqualTo(6);
 
-		double twentyFour = parser.parseExpression("2.0 * 3e0 * 4").getValue(Double.class); // 24.0
+		// evaluates to 5; counter is now 0
+		five = parser.parseExpression("5 + --counter").getValue(context, inventor, int.class);
+		assertThat(five).isEqualTo(5);
+
+		// -- Multiplication --
+
+		six = parser.parseExpression("-2 * -3").getValue(int.class);  // 6
+		assertThat(six).isEqualTo(6);
+
+		double twentyFour = parser.parseExpression("2.0 * 3e0 * 4").getValue(double.class);  // 24.0
 		assertThat(twentyFour).isCloseTo(24.0d, within((double) 0));
 
-		// Division
-		int minusTwo = parser.parseExpression("6 / -3").getValue(Integer.class); // -2
+		// -- Division --
+
+		int minusTwo = parser.parseExpression("6 / -3").getValue(int.class);  // -2
 		assertThat(minusTwo).isEqualTo(-2);
 
-		double one = parser.parseExpression("8.0 / 4e0 / 2").getValue(Double.class); // 1.0
+		double one = parser.parseExpression("8.0 / 4e0 / 2").getValue(double.class);  // 1.0
 		assertThat(one).isCloseTo(1.0d, within((double) 0));
 
-		// Modulus
-		int three = parser.parseExpression("7 % 4").getValue(Integer.class); // 3
+		// -- Modulus --
+
+		int three = parser.parseExpression("7 % 4").getValue(int.class);  // 3
 		assertThat(three).isEqualTo(3);
 
-		int oneInt = parser.parseExpression("8 / 5 % 2").getValue(Integer.class); // 1
+		int oneInt = parser.parseExpression("8 / 5 % 2").getValue(int.class);  // 1
 		assertThat(oneInt).isEqualTo(1);
 
-		// Operator precedence
-		int minusTwentyOne = parser.parseExpression("1+2-3*8").getValue(Integer.class); // -21
+		// -- Exponential power --
+
+		int maxInt = parser.parseExpression("(2^31) - 1").getValue(int.class);  // Integer.MAX_VALUE
+		assertThat(maxInt).isEqualTo(Integer.MAX_VALUE);
+
+		// -- Operator precedence --
+
+		int minusTwentyOne = parser.parseExpression("1+2-3*8").getValue(int.class);  // -21
 		assertThat(minusTwentyOne).isEqualTo(-21);
 	}
 
 	@Test
 	void assignment() {
 		Inventor inventor = new Inventor();
-		StandardEvaluationContext inventorContext = new StandardEvaluationContext();
-		inventorContext.setRootObject(inventor);
+		EvaluationContext context = SimpleEvaluationContext.forReadWriteDataBinding().build();
 
-		parser.parseExpression("foo").setValue(inventorContext, "Alexander Seovic2");
+		parser.parseExpression("foo").setValue(context, inventor, "Alexander Seovic2");
 
-		assertThat(parser.parseExpression("foo").getValue(inventorContext,String.class)).isEqualTo("Alexander Seovic2");
+		assertThat(parser.parseExpression("foo").getValue(context, inventor, String.class)).isEqualTo("Alexander Seovic2");
 
 		// alternatively
-		String aleks = parser.parseExpression("foo = 'Alexandar Seovic'").getValue(inventorContext, String.class);
-		assertThat(parser.parseExpression("foo").getValue(inventorContext,String.class)).isEqualTo("Alexandar Seovic");
+		String aleks = parser.parseExpression("foo = 'Alexandar Seovic'").getValue(context, inventor, String.class);
+		assertThat(parser.parseExpression("foo").getValue(context, inventor, String.class)).isEqualTo("Alexandar Seovic");
 		assertThat(aleks).isEqualTo("Alexandar Seovic");
 	}
 
