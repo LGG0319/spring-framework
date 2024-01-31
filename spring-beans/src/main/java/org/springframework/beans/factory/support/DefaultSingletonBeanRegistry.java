@@ -74,19 +74,28 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	private static final int SUPPRESSED_EXCEPTIONS_LIMIT = 100;
 
 
-	/** Cache of singleton objects: bean name to bean instance. */
+	/** Cache of singleton objects: bean name to bean instance.
+	 * 第一层缓存 k-> beanName  v->bean实例，bean创建并初始化后，会缓存至该map
+	 */
 	private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
 
-	/** Cache of singleton factories: bean name to ObjectFactory. */
+	/** Cache of singleton factories: bean name to ObjectFactory.
+	 * 第二层缓存 k-> beanName  v->ObjectFactory（ObjectFactory其实就是返回bean实例的引用），bean创建后（初始化之前），会缓存至该map，初始化完成后，从该map移除
+	 */
 	private final Map<String, ObjectFactory<?>> singletonFactories = new HashMap<>(16);
 
-	/** Cache of early singleton objects: bean name to bean instance. */
+	/** Cache of early singleton objects: bean name to bean instance.
+	 * 第三层缓存 k-> beanName  v->bean实例，在获取bean时，如果第一层缓存没有，第二层缓存有，就调用对应ObjectFactory的getObject方法，并将返回的bean缓存至该map，从第二层缓存中移除
+	 *（其实就是怕ObjectFactory.getObject是个耗时操作，为了提高性能，调用一次后将结果缓存），初始化完成后，从该map移除
+	 */
 	private final Map<String, Object> earlySingletonObjects = new ConcurrentHashMap<>(16);
 
 	/** Set of registered singletons, containing the bean names in registration order. */
 	private final Set<String> registeredSingletons = new LinkedHashSet<>(256);
 
-	/** Names of beans that are currently in creation. */
+	/** Names of beans that are currently in creation.
+	 * 当前正在创建的bean的名称
+	 */
 	private final Set<String> singletonsCurrentlyInCreation =
 			Collections.newSetFromMap(new ConcurrentHashMap<>(16));
 

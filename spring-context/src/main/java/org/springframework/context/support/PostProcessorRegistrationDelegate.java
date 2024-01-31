@@ -64,7 +64,19 @@ final class PostProcessorRegistrationDelegate {
 	private PostProcessorRegistrationDelegate() {
 	}
 
-
+	/**
+	 * 	执行实现了 BeanFactoryPostProcessor 与 BeanDefinitionRegistryPostProcessor 的实现类
+	 * 		1.	判断beanFactory是否为BeanDefinitionRegistry（保存bean定义的注册中心接口）
+	 * 		    true: 1. 将后置处理器分为regularPostProcessors（常规后置处理器）与registryProcessors(注册后置处理器)
+	 * 		          2. 先执行启动时添加的 BeanDefinitionRegistryPostProcessor 的 postProcessBeanDefinitionRegistry（） 方法
+	 * 		          3. 再执行实现了 PriorityOrdered 接口的 BeanDefinitionRegistryPostProcessor 的 postProcessBeanDefinitionRegistry（） 方法
+	 * 		          4. 再执行实现了 Ordered 接口的 BeanDefinitionRegistryPostProcessor 的 postProcessBeanDefinitionRegistry（） 方法
+	 * 		          5. 再执行其他的未实现 PriorityOrdered 与 Ordered 接口的BeanDefinitionRegistryPostProcessor
+	 * 		          6. 先执行实现了 BeanDefinitionRegistryPostProcessor 的post方法，然后排序执行，最后执行未实现ordered的 post 方法
+	 * 		// false : 直接执行 BeanFactoryPostProcessor.postProcessBeanFactory
+	 * @param beanFactory
+	 * @param beanFactoryPostProcessors
+	 */
 	public static void invokeBeanFactoryPostProcessors(
 			ConfigurableListableBeanFactory beanFactory, List<BeanFactoryPostProcessor> beanFactoryPostProcessors) {
 
@@ -85,18 +97,14 @@ final class PostProcessorRegistrationDelegate {
 		// 首先调用BeanDefinitionRegistryPostProcessors（如果有）
 		Set<String> processedBeans = new HashSet<>();
 
-		// 判断beanFactory是否为BeanDefinitionRegistry（保存bean定义的注册中心接口）
-		// true: 1.将后置处理器分为regularPostProcessors（常规后置处理器）与registryProcessors(注册后置处理器)
-		//       2.找出实现了@Order的处理器执行，执行regularPostProcessors（常规后置处理器）与registryProcessors(注册后置处理器)
-		//       3.
-		// false : 直接执行 BeanFactoryPostProcessor.postProcessBeanFactory
 		if (beanFactory instanceof BeanDefinitionRegistry registry) {
 			// 常规后置处理器，用来存放BeanFactoryPostProcessor对象
 			List<BeanFactoryPostProcessor> regularPostProcessors = new ArrayList<>();
 			// 注册后置处理器，用来存放BeanDefinitionRegistryPostProcessor对象
 			// 方便统一执行实现了BeanDefinitionRegistryPostProcessor接口父类的方法
 			List<BeanDefinitionRegistryPostProcessor> registryProcessors = new ArrayList<>();
-			// 遍历所有实现BeanFactoryPostProcessor的bean
+			// 遍历所有实现BeanFactoryPostProcessor的bean，如果为BeanDefinitionRegistryPostProcessor则执行其postProcessBeanDefinitionRegistry()方法,
+			// 此beanFactoryPostProcessors来自启动时add()
 			for (BeanFactoryPostProcessor postProcessor : beanFactoryPostProcessors) {
 				// 判断beanFactory是否为BeanDefinitionRegistryPostProcessor（保存bean定义的注册中心接口）
 				if (postProcessor instanceof BeanDefinitionRegistryPostProcessor registryProcessor) {
