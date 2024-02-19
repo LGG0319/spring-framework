@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2023 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package org.springframework.context.event;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -145,8 +146,15 @@ public class SimpleApplicationEventMulticaster extends AbstractApplicationEventM
 		for (ApplicationListener<?> listener : getApplicationListeners(event, type)) {
 			// 判断此侦听器是否支持异步执行
 			if (executor != null && listener.supportsAsyncExecution()) {
-				// 发布、执行
-				executor.execute(() -> invokeListener(listener, event));
+				try {
+					// 发布、执行
+					executor.execute(() -> invokeListener(listener, event));
+				}
+				catch (RejectedExecutionException ex) {
+					// Probably on shutdown -> invoke listener locally instead
+					// 发布、执行
+					invokeListener(listener, event);
+				}
 			}
 			else {
 				// 发布、执行
