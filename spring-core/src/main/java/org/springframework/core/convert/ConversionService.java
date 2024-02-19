@@ -25,6 +25,7 @@ import org.springframework.lang.Nullable;
  * @author Keith Donald
  * @author Phillip Webb
  * @since 3.0
+ * 判断是否可以两种类型是否可以转换，和转换方法
  */
 public interface ConversionService {
 

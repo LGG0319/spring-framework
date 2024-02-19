@@ -150,8 +150,6 @@ final class PostProcessorRegistrationDelegate {
 			currentRegistryProcessors.clear();
 
 			// Next, invoke the BeanDefinitionRegistryPostProcessors that implement Ordered.
-			// Next, invoke the BeanDefinitionRegistryPostProcessors that implement Ordered.
-			// TODO 接下来，调用实现 Ordered 的 BeanDefinitionRegistryPostProcessors。
 			// 这里为什么要再次获取BeanDefinitionRegistryPostProcessor
 			// 是因为有可能在上面方法执行过程中添加了BeanDefinitionRegistryPostProcessor，所以这里再次获取
 			// 而下面处理BeanFactoryPostProcessor的时候又不需要重复获取了是为什么呢？
@@ -266,6 +264,16 @@ final class PostProcessorRegistrationDelegate {
 		beanFactory.clearMetadataCache();
 	}
 
+	/**
+	 * 1. register priorityOrderedPostProcessors
+	 * 2. register orderedPostProcessors
+	 * 3. register nonOrderedPostProcessorNames
+	 * 4. register internalPostProcessors
+	 * 5. register ApplicationListenerDetector
+	 * 会存在重复注册的情况，因此注册时为先删除集合中已有的待注册的 BeanPostProcessor , 再注册当前集合中 BeanPostProcessor，保证 beanPostProcessors 中 BeanPostProcessor 唯一
+	 * @param beanFactory
+	 * @param applicationContext
+	 */
 	public static void registerBeanPostProcessors(
 			ConfigurableListableBeanFactory beanFactory, AbstractApplicationContext applicationContext) {
 
@@ -534,6 +542,7 @@ final class PostProcessorRegistrationDelegate {
 			return bean;
 		}
 
+		// 检查是否为基础Bean
 		private boolean isInfrastructureBean(@Nullable String beanName) {
 			if (beanName != null && this.beanFactory.containsBeanDefinition(beanName)) {
 				BeanDefinition bd = this.beanFactory.getBeanDefinition(beanName);
