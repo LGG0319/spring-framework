@@ -325,7 +325,7 @@ public class ResolvableType implements Serializable {
 					other.getComponentType(), true, matchedBefore, upUntilUnresolvable));
 		}
 
-		if (upUntilUnresolvable && other.isUnresolvableTypeVariable()) {
+		if (upUntilUnresolvable && (other.isUnresolvableTypeVariable() || other.isWildcardWithoutBounds())) {
 			return true;
 		}
 
@@ -655,7 +655,7 @@ public class ResolvableType implements Serializable {
 				return true;
 			}
 			ResolvableType resolved = this.variableResolver.resolveVariable(variable);
-			if (resolved == null || resolved.isUnresolvableTypeVariable()) {
+			if (resolved == null || resolved.isUnresolvableTypeVariable() || resolved.isWildcardWithoutBounds()) {
 				return true;
 			}
 		}

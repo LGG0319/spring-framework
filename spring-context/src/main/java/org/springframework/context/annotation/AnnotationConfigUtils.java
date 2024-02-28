@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2023 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 package org.springframework.context.annotation;
 
 import java.lang.annotation.Annotation;
-import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -38,6 +37,7 @@ import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.lang.Nullable;
 import org.springframework.util.ClassUtils;
+import org.springframework.util.CollectionUtils;
 
 /**
  * Utility class that allows for convenient registration of common
@@ -157,7 +157,7 @@ public abstract class AnnotationConfigUtils {
 			}
 		}
 
-		Set<BeanDefinitionHolder> beanDefs = new LinkedHashSet<>(8);
+		Set<BeanDefinitionHolder> beanDefs = CollectionUtils.newLinkedHashSet(6);
 
 		if (!registry.containsBeanDefinition(CONFIGURATION_ANNOTATION_PROCESSOR_BEAN_NAME)) {
 			// 创建一个可以处理有@Configuration注解的类的postprocessor，并注册到RootBeanDefinition
@@ -254,6 +254,9 @@ public abstract class AnnotationConfigUtils {
 		//如果Bean定义中有@Primary注解，则为该Bean设置为autowiring自动依赖注入装配的首选对象
 		if (metadata.isAnnotated(Primary.class.getName())) {
 			abd.setPrimary(true);
+		}
+		if (metadata.isAnnotated(Fallback.class.getName())) {
+			abd.setFallback(true);
 		}
 		//如果Bean定义中有@DependsOn注解，则为该Bean设置所依赖的Bean名称，
 		//容器将确保在实例化该Bean之前首先实例化所依赖的Bean
