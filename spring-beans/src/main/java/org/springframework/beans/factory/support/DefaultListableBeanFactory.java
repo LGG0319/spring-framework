@@ -1029,6 +1029,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 				RootBeanDefinition mbd = getMergedLocalBeanDefinition(beanName);
 				// 4、对应的Bean实例：不是抽象类 && 是单例
 				if (!mbd.isAbstract() && mbd.isSingleton()) {
+					// 开始实例化Bean
 					CompletableFuture<?> future = preInstantiateSingleton(beanName, mbd);
 					if (future != null) {
 						futures.add(future);
@@ -1063,9 +1064,11 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
 	@Nullable
 	private CompletableFuture<?> preInstantiateSingleton(String beanName, RootBeanDefinition mbd) {
+		// 是否采用线程池后台初始化     使用@Bean(bootstrap = Bean.Bootstrap.BACKGROUND)
 		if (mbd.isBackgroundInit()) {
 			Executor executor = getBootstrapExecutor();
 			if (executor != null) {
+				// 处理依赖项Bean
 				String[] dependsOn = mbd.getDependsOn();
 				if (dependsOn != null) {
 					for (String dep : dependsOn) {
@@ -1112,6 +1115,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		}
 	}
 
+	// 实例化单例Bean
 	private void instantiateSingleton(String beanName) {
 		if (isFactoryBean(beanName)) {
 			Object bean = getBean(FACTORY_BEAN_PREFIX + beanName);

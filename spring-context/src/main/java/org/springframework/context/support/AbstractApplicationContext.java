@@ -594,8 +594,9 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		// 同步监视器（刷新、同步）
 		this.startupShutdownLock.lock();
 		try {
+			// 获取当前线程，可通过当前线程终止 spring 应用进程
 			this.startupShutdownThread = Thread.currentThread();
-		// spring启动第二步 刷新配置
+			// spring启动第二步 刷新配置
 			StartupStep contextRefresh = this.applicationStartup.start("spring.context.refresh");
 
 			// Prepare this context for refreshing.
@@ -619,7 +620,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				// 开始执行post-process
 				StartupStep beanPostProcess = this.applicationStartup.start("spring.context.beans.post-process");
 				// Invoke factory processors registered as beans in the context.
-				// 5.调用BeanFactoryPostProcessor各个实现类的方法
+				// 5.调用BeanFactoryPostProcessor各个实现类的方法（执行 beanFactory 的后置处理器）
 				invokeBeanFactoryPostProcessors(beanFactory);
 				// Register bean processors that intercept bean creation.
 				//6. 注册 BeanPostProcessor 的实现类，注意看和 BeanFactoryPostProcessor 的区别
@@ -645,11 +646,11 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				registerListeners();
 
 				// Instantiate all remaining (non-lazy-init) singletons.
-				//** 11.初始化所有singleton bean；**重点方法
+				// 11.初始化所有singleton bean；**重点方法
 				finishBeanFactoryInitialization(beanFactory);
 
 				// Last step: publish corresponding event.
-				// 发布相应的事件
+				// 12.发布相应的事件
 				finishRefresh();
 			}
 
