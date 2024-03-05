@@ -107,12 +107,12 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	@Nullable
 	private volatile Thread singletonCreationThread;
 
+	/** Flag that indicates whether we're currently within destroySingletons. */
+	private volatile boolean singletonsCurrentlyInDestruction = false;
+
 	/** Collection of suppressed Exceptions, available for associating related causes. */
 	@Nullable
 	private Set<Exception> suppressedExceptions;
-
-	/** Flag that indicates whether we're currently within destroySingletons. */
-	private boolean singletonsCurrentlyInDestruction = false;
 
 	/** Disposable bean instances: bean name to disposable instance. */
 	private final Map<String, DisposableBean> disposableBeans = new LinkedHashMap<>();
@@ -250,14 +250,16 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 					}
 					else {
 						Thread threadWithLock = this.singletonCreationThread;
-						// Another thread is busy in a singleton factory callback, potentially blocked.
-						// Fallback as of 6.2: process given singleton bean outside of singleton lock.
-						// Thread-safe exposure is still guaranteed, there is just a risk of collisions
-						// when triggering creation of other beans as dependencies of the current bean.
-						if (threadWithLock != null && logger.isInfoEnabled()) {
-							logger.info("Creating singleton bean '" + beanName + "' in thread \"" +
-									Thread.currentThread().getName() + "\" while thread \"" + threadWithLock.getName() +
-									"\" holds singleton lock for other beans " + this.singletonsCurrentlyInCreation);
+						if (threadWithLock != null) {
+							// Another thread is busy in a singleton factory callback, potentially blocked.
+							// Fallback as of 6.2: process given singleton bean outside of singleton lock.
+							// Thread-safe exposure is still guaranteed, there is just a risk of collisions
+							// when triggering creation of other beans as dependencies of the current bean.
+							if (logger.isInfoEnabled()) {
+								logger.info("Creating singleton bean '" + beanName + "' in thread \"" +
+										Thread.currentThread().getName() + "\" while thread \"" + threadWithLock.getName() +
+										"\" holds singleton lock for other beans " + this.singletonsCurrentlyInCreation);
+							}
 						}
 						else {
 							// Singleton lock currently held by some other registration method -> wait.
@@ -573,13 +575,7 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 		if (logger.isTraceEnabled()) {
 			logger.trace("Destroying singletons in " + this);
 		}
-		this.singletonLock.lock();
-		try {
-			this.singletonsCurrentlyInDestruction = true;
-		}
-		finally {
-			this.singletonLock.unlock();
-		}
+		this.singletonsCurrentlyInDestruction = true;
 
 		String[] disposableBeanNames;
 		synchronized (this.disposableBeans) {
@@ -621,21 +617,28 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	 * @see #destroyBean
 	 */
 	public void destroySingleton(String beanName) {
-		// Remove a registered singleton of the given name, if any.
-		this.singletonLock.lock();
-		try {
-			removeSingleton(beanName);
-		}
-		finally {
-			this.singletonLock.unlock();
-		}
-
 		// Destroy the corresponding DisposableBean instance.
+		// This also triggers the destruction of dependent beans.
 		DisposableBean disposableBean;
 		synchronized (this.disposableBeans) {
 			disposableBean = this.disposableBeans.remove(beanName);
 		}
 		destroyBean(beanName, disposableBean);
+
+		// destroySingletons() removes all singleton instances at the end,
+		// leniently tolerating late retrieval during the shutdown phase.
+		if (!this.singletonsCurrentlyInDestruction) {
+			// For an individual destruction, remove the registered instance now.
+			// As of 6.2, this happens after the current bean's destruction step,
+			// allowing for late bean retrieval by on-demand suppliers etc.
+			this.singletonLock.lock();
+			try {
+				removeSingleton(beanName);
+			}
+			finally {
+				this.singletonLock.unlock();
+			}
+		}
 	}
 
 	/**
