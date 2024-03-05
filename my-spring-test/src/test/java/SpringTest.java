@@ -1,10 +1,10 @@
 import myspring.Message.MessageSourceTest;
+import myspring.aoptest.Louzai;
 import myspring.config.AppConfig;
 import myspring.eventPublish.PublishService;
 import myspring.propertySource.MyPropertySource;
 import myspring.service.ResourceLoaderAwareService;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
@@ -19,7 +19,7 @@ public class SpringTest {
 		AnnotationConfigApplicationContext ac = new MyPropertySource();
 
 		ac.addBeanFactoryPostProcessor(new BeanDefinitionRegistryPostProcessor() {
-			@Override
+            @Override
 			public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
 				System.out.println("----------扩展点--启动时添加postProcessBeanDefinitionRegistry-------------");
 			}
@@ -41,7 +41,8 @@ public class SpringTest {
 		PublishService publishService = ac.getBean(PublishService.class);
 		publishService.trigger();
 
-
+		Louzai louzai = ac.getBean(Louzai.class);
+		louzai.everyDay();
 		MessageSourceTest bean = ac.getBean(MessageSourceTest.class);
 		bean.testMessageSource();
 

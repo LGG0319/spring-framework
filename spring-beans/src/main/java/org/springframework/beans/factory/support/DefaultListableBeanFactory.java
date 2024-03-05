@@ -1094,6 +1094,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			}
 		}
 		if (!mbd.isLazyInit()) {
+			// 非懒加载情况下实例化Bean
 			instantiateSingleton(beanName);
 		}
 		return null;
@@ -1124,6 +1125,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			}
 		}
 		else {
+			// 获取Bean的入口
 			getBean(beanName);
 		}
 	}
