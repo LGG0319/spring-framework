@@ -88,6 +88,7 @@ public final class ExposeInvocationInterceptor implements MethodInterceptor, Pri
 	private ExposeInvocationInterceptor() {
 	}
 
+	// AOP 首次递归执行
 	@Override
 	@Nullable
 	public Object invoke(MethodInvocation mi) throws Throwable {

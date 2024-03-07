@@ -49,6 +49,7 @@ public interface AopProxy {
 	 * @param classLoader the class loader to create the proxy with
 	 * (or {@code null} for the low-level proxy facility's default)
 	 * @return the new proxy object (never {@code null})
+	 * 两种实现  cglib 和 jdk
 	 */
 	Object getProxy(@Nullable ClassLoader classLoader);
 

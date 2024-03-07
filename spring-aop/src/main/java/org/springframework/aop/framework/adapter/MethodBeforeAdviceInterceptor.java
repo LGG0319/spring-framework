@@ -51,6 +51,7 @@ public class MethodBeforeAdviceInterceptor implements MethodInterceptor, BeforeA
 	}
 
 
+	// AOP 第二次递归执行
 	@Override
 	@Nullable
 	public Object invoke(MethodInvocation mi) throws Throwable {
