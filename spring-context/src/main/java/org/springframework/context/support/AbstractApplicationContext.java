@@ -1110,6 +1110,14 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		CachedIntrospectionResults.clearClassLoader(getClassLoader());
 	}
 
+	@Override
+	public void clearResourceCaches() {
+		super.clearResourceCaches();
+		if (this.resourcePatternResolver instanceof PathMatchingResourcePatternResolver pmrpr) {
+			pmrpr.clearCache();
+		}
+	}
+
 
 	/**
 	 * Register a shutdown hook {@linkplain Thread#getName() named}
