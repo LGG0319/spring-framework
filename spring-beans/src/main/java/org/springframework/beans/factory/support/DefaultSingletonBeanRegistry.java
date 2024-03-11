@@ -17,7 +17,6 @@
 package org.springframework.beans.factory.support;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -27,6 +26,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.BeanCreationNotAllowedException;
@@ -81,10 +81,13 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	 */
 	private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
 
-	/** Cache of singleton factories: bean name to ObjectFactory.
+	/** Creation-time registry of singleton factories: bean name to ObjectFactory.
 	 * 第二层缓存 k-> beanName  v->ObjectFactory（ObjectFactory其实就是返回bean实例的引用），bean创建后（初始化之前），会缓存至该map，初始化完成后，从该map移除
 	 */
-	private final Map<String, ObjectFactory<?>> singletonFactories = new HashMap<>(16);
+	private final Map<String, ObjectFactory<?>> singletonFactories = new ConcurrentHashMap<>(16);
+
+	/** Custom callbacks for singleton creation/registration. */
+	private final Map<String, Consumer<Object>> singletonCallbacks = new ConcurrentHashMap<>(16);
 
 	/** Cache of early singleton objects: bean name to bean instance.
 	 * 第三层缓存 k-> beanName  v->bean实例，在获取bean时，如果第一层缓存没有，第二层缓存有，就调用对应ObjectFactory的getObject方法，并将返回的bean缓存至该map，从第二层缓存中移除
@@ -141,8 +144,8 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	}
 
 	/**
-	 * Add the given singleton object to the singleton cache of this factory.
-	 * <p>To be called for eager registration of singletons.
+	 * Add the given singleton object to the singleton registry.
+	 * <p>To be called for exposure of freshly registered/created singletons.
 	 * @param beanName the name of the bean
 	 * @param singletonObject the singleton object
 	 */
@@ -155,12 +158,17 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 		this.singletonFactories.remove(beanName);
 		this.earlySingletonObjects.remove(beanName);
 		this.registeredSingletons.add(beanName);
+
+		Consumer<Object> callback = this.singletonCallbacks.get(beanName);
+		if (callback != null) {
+			callback.accept(singletonObject);
+		}
 	}
 
 	/**
 	 * Add the given singleton factory for building the specified singleton
 	 * if necessary.
-	 * <p>To be called for eager registration of singletons, e.g. to be able to
+	 * <p>To be called for early exposure purposes, e.g. to be able to
 	 * resolve circular references.
 	 * @param beanName the name of the bean
 	 * @param singletonFactory the factory for the singleton object
@@ -170,6 +178,11 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 		this.singletonFactories.put(beanName, singletonFactory);
 		this.earlySingletonObjects.remove(beanName);
 		this.registeredSingletons.add(beanName);
+	}
+
+	@Override
+	public void addSingletonCallback(String beanName, Consumer<Object> singletonConsumer) {
+		this.singletonCallbacks.put(beanName, singletonConsumer);
 	}
 
 	@Override
@@ -273,6 +286,7 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 						}
 					}
 				}
+
 				if (this.singletonsCurrentlyInDestruction) {
 					throw new BeanCreationNotAllowedException(beanName,
 							"Singleton bean creation not allowed while singletons of this factory are in destruction " +
@@ -356,8 +370,8 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	}
 
 	/**
-	 * Remove the bean with the given name from the singleton cache of this factory,
-	 * to be able to clean up eager registration of a singleton if creation failed.
+	 * Remove the bean with the given name from the singleton registry, either on
+	 * regular destruction or on cleanup after early exposure when creation failed.
 	 * @param beanName the name of the bean
 	 */
 	protected void removeSingleton(String beanName) {
