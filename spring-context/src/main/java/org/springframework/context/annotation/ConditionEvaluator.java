@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2023 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -98,19 +98,7 @@ class ConditionEvaluator {
 			return shouldSkip(metadata, ConfigurationPhase.REGISTER_BEAN);
 		}
 
-		List<Condition> conditions = new ArrayList<>();
-		//获取metadata中的Conditional注解里面的所有value(这里就是CustomConditionalImpl)的全类名
-		for (String[] conditionClasses : getConditionClasses(metadata)) {
-			//遍历，然后通过全类名和类加载器，
-			// 反射拿到Condition 实例(这里就是CustomConditionalImpl)，加入到conditions集合
-			for (String conditionClass : conditionClasses) {
-				Condition condition = getCondition(conditionClass, this.context.getClassLoader());
-				conditions.add(condition);
-			}
-		}
-		//排序
-		AnnotationAwareOrderComparator.sort(conditions);
-
+		List<Condition> conditions = collectConditions(metadata);
 		//遍历condition集合，判断condition实例是否有实现ConfigurationCondition这个接口，
 		// 如果有，就拿到重写的ConfigurationCondition接口的getConfigurationPhase()
 		// 方法的ConfigurationPhase。
@@ -125,6 +113,32 @@ class ConditionEvaluator {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Return the {@linkplain Condition conditions} that should be applied when
+	 * considering the given annotated type.
+	 * @param metadata the metadata of the annotated type
+	 * @return the ordered list of conditions for that type
+	 */
+	//获取metadata中的Conditional注解里面的所有value(这里就是CustomConditionalImpl)的全类名
+	List<Condition> collectConditions(@Nullable AnnotatedTypeMetadata metadata) {
+		if (metadata == null || !metadata.isAnnotated(Conditional.class.getName())) {
+			return Collections.emptyList();
+		}
+
+		List<Condition> conditions = new ArrayList<>();
+		//遍历，然后通过全类名和类加载器，
+		// 反射拿到Condition 实例(这里就是CustomConditionalImpl)，加入到conditions集合
+		for (String[] conditionClasses : getConditionClasses(metadata)) {
+			for (String conditionClass : conditionClasses) {
+				Condition condition = getCondition(conditionClass, this.context.getClassLoader());
+				conditions.add(condition);
+			}
+		}
+		//排序
+		AnnotationAwareOrderComparator.sort(conditions);
+		return conditions;
 	}
 
 	// 获取@Conditional注解上的所有属性
