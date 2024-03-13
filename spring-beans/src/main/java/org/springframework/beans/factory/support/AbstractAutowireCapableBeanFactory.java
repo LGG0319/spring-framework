@@ -568,6 +568,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			instanceWrapper = this.factoryBeanInstanceCache.remove(beanName);
 		}
 		if (instanceWrapper == null) {
+			// 创建Bean实例
 			instanceWrapper = createBeanInstance(beanName, mbd, args);
 		}
 		Object bean = instanceWrapper.getWrappedInstance();
@@ -601,6 +602,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 				logger.trace("Eagerly caching bean '" + beanName +
 						"' to allow for resolving potential circular references");
 			}
+			// 提前将实例化后的Bean对象通过ObjectFactory暴露到二级缓存中
 			addSingletonFactory(beanName, () -> getEarlyBeanReference(beanName, mbd, bean));
 		}
 
@@ -609,8 +611,10 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		Object exposedObject = bean;
 		try {
 			//处理InstantiationAwareBeanPostProcessor的postProcessAfterInstantiation
+			// 填充Bean属性
 			populateBean(beanName, mbd, instanceWrapper);
 			//初始化Bean -- 包含处理 BeanPostProcessor的实现以及init方法 （包括后置处理）
+			// 初始化Bean实例,给Bean对象赋值，执行相关Aware方法，执行AOP后置相关增强
 			exposedObject = initializeBean(beanName, exposedObject, mbd);
 		}
 		catch (Throwable ex) {
@@ -1788,7 +1792,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 		Object wrappedBean = bean;
 		if (mbd == null || !mbd.isSynthetic()) {
-			// 后置处理
+			// AOP后置处理,调用BeanPostProcessors 的Before方法
 			wrappedBean = applyBeanPostProcessorsBeforeInitialization(wrappedBean, beanName);
 		}
 
