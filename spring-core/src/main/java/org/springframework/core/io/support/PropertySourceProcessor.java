@@ -88,8 +88,10 @@ public class PropertySourceProcessor {
 
 		for (String location : locations) {
 			try {
+				// 处理属性值的占位符
 				String resolvedLocation = this.environment.resolveRequiredPlaceholders(location);
 				for (Resource resource : this.resourcePatternResolver.getResources(resolvedLocation)) {
+					// 将指定位置的资源转换成resource对象
 					addPropertySource(factory.createPropertySource(name, new EncodedResource(resource, encoding)));
 				}
 			}
@@ -110,6 +112,7 @@ public class PropertySourceProcessor {
 
 	private void addPropertySource(PropertySource<?> propertySource) {
 		String name = propertySource.getName();
+		// 获取属性资源
 		MutablePropertySources propertySources = this.environment.getPropertySources();
 
 		if (this.propertySourceNames.contains(name)) {
