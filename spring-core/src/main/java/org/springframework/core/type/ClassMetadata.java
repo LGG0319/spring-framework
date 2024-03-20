@@ -27,33 +27,39 @@ import org.springframework.lang.Nullable;
  * @see StandardClassMetadata
  * @see org.springframework.core.type.classreading.MetadataReader#getClassMetadata()
  * @see AnnotationMetadata
+ * 对Class的封装适配，使用它时并不典求该Bean已经被加载，它的所有方法，基本上都跟Class有关
  */
 public interface ClassMetadata {
 
 	/**
 	 * Return the name of the underlying class.
+	 * 返回类名（注意返回的是最原始的那个className）
 	 */
 	String getClassName();
 
 	/**
 	 * Return whether the underlying class represents an interface.
+	 * 是否是接口
 	 */
 	boolean isInterface();
 
 	/**
 	 * Return whether the underlying class represents an annotation.
 	 * @since 4.1
+	 * 是否是注解
 	 */
 	boolean isAnnotation();
 
 	/**
 	 * Return whether the underlying class is marked as abstract.
+	 * 是否为抽象类
 	 */
 	boolean isAbstract();
 
 	/**
 	 * Return whether the underlying class represents a concrete class,
 	 * i.e. neither an interface nor an abstract class.
+	 * 是否允许创建  不是接口且不是抽象类  这里就返回true了
 	 */
 	default boolean isConcrete() {
 		return !(isInterface() || isAbstract());
@@ -61,6 +67,7 @@ public interface ClassMetadata {
 
 	/**
 	 * Return whether the underlying class is marked as 'final'.
+	 * 是否为最终类
 	 */
 	boolean isFinal();
 
@@ -68,6 +75,7 @@ public interface ClassMetadata {
 	 * Determine whether the underlying class is independent, i.e. whether
 	 * it is a top-level class or a nested class (static inner class) that
 	 * can be constructed independently of an enclosing class.
+	 * 是否是独立的(能够创建对象的)  比如是Class、或者内部类、静态内部类
 	 */
 	boolean isIndependent();
 
@@ -77,6 +85,7 @@ public interface ClassMetadata {
 	 * local class within a method).
 	 * <p>If this method returns {@code false}, then the underlying
 	 * class is a top-level class.
+	 * 是否有内部类之类的东东
 	 */
 	default boolean hasEnclosingClass() {
 		return (getEnclosingClassName() != null);
@@ -106,6 +115,7 @@ public interface ClassMetadata {
 	/**
 	 * Return the names of all interfaces that the underlying class
 	 * implements, or an empty array if there are none.
+	 * 会把实现的所有接口名称都返回  具体依赖于Class#getSuperclass
 	 */
 	String[] getInterfaceNames();
 
@@ -116,6 +126,7 @@ public interface ClassMetadata {
 	 * inherited classes and interfaces. An empty array is returned if no member classes
 	 * or interfaces exist.
 	 * @since 3.1
+	 * 基于：Class#getDeclaredClasses  返回类中定义的公共、私有、保护的内部类
 	 */
 	String[] getMemberClassNames();
 

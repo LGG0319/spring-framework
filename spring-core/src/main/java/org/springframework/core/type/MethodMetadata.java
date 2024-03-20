@@ -28,6 +28,7 @@ package org.springframework.core.type;
  * @see StandardMethodMetadata
  * @see AnnotationMetadata#getAnnotatedMethods
  * @see AnnotatedTypeMetadata
+ * 基本上是代理了Method introspectedMethod
  */
 public interface MethodMetadata extends AnnotatedTypeMetadata {
 
@@ -38,12 +39,14 @@ public interface MethodMetadata extends AnnotatedTypeMetadata {
 
 	/**
 	 * Get the fully-qualified name of the class that declares the underlying method.
+	 * 此方法所属类的全类名
 	 */
 	String getDeclaringClassName();
 
 	/**
 	 * Get the fully-qualified name of the underlying method's declared return type.
 	 * @since 4.2
+	 * 方法返回值的全类名
 	 */
 	String getReturnTypeName();
 

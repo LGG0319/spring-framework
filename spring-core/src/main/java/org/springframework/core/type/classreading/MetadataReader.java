@@ -26,22 +26,26 @@ import org.springframework.core.type.ClassMetadata;
  *
  * @author Juergen Hoeller
  * @since 2.5
+ * 该接口对Class的元数据做了一个get方法的封装，方便一次性获取所有需要的数据。
  */
 public interface MetadataReader {
 
 	/**
 	 * Return the resource reference for the class file.
+	 * 返回此Class来自的资源（创建的时候需要指定此资源，然后交给`AnnotationMetadataReadingVisitor`去处理）
 	 */
 	Resource getResource();
 
 	/**
 	 * Read basic class metadata for the underlying class.
+	 * ClassMeta，实现为通过`AnnotationMetadataReadingVisitor`中获取
 	 */
 	ClassMetadata getClassMetadata();
 
 	/**
 	 * Read full annotation metadata for the underlying class,
 	 * including metadata for annotated methods.
+	 * 注解元信息 也是通过`AnnotationMetadataReadingVisitor`获取
 	 */
 	AnnotationMetadata getAnnotationMetadata();
 

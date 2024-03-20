@@ -43,6 +43,7 @@ import org.springframework.util.ReflectionUtils;
  * @author Phillip Webb
  * @author Sam Brannen
  * @since 2.5
+ * 使用 Java 反射原理获取元数据
  */
 public class StandardAnnotationMetadata extends StandardClassMetadata implements AnnotationMetadata {
 
