@@ -108,19 +108,23 @@ public class TransactionInterceptor extends TransactionAspectSupport implements 
 	}
 
 
+	// 通过 AOP 环绕增强的方式，拦截声明式事务
 	@Override
 	@Nullable
 	public Object invoke(MethodInvocation invocation) throws Throwable {
 		// Work out the target class: may be {@code null}.
 		// The TransactionAttributeSource should be passed the target class
 		// as well as the method, which may be from an interface.
+		// 获取 targetClass
 		Class<?> targetClass = (invocation.getThis() != null ? AopUtils.getTargetClass(invocation.getThis()) : null);
 
+		// 2.调用 TransactionAspectSupport#invokewithinTransaction处理事务
 		// Adapt to TransactionAspectSupport's invokeWithinTransaction...
 		return invokeWithinTransaction(invocation.getMethod(), targetClass, new CoroutinesInvocationCallback() {
 			@Override
 			@Nullable
 			public Object proceedWithInvocation() throws Throwable {
+				// 实际执行目标方法
 				return invocation.proceed();
 			}
 			@Override

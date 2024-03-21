@@ -20,6 +20,7 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
     implementation(project(":spring-context"))
     implementation(project(":spring-aspects"))
+    implementation(project(":spring-tx"))
     compileOnly 'org.projectlombok:lombok:1.18.30'
 }
 

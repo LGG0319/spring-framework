@@ -709,6 +709,7 @@ class CglibAopProxy implements AopProxy, Serializable {
 				target = targetSource.getTarget();
 				Class<?> targetClass = (target != null ? target.getClass() : null);
 				// 获取执行链
+				// 从advised中获取配置好的AOP通知     获取到事务的通知类
 				List<Object> chain = this.advised.getInterceptorsAndDynamicInterceptionAdvice(method, targetClass);
 				Object retVal;
 				// Check whether we only have one InvokerInterceptor: that is,
@@ -722,7 +723,7 @@ class CglibAopProxy implements AopProxy, Serializable {
 					retVal = AopUtils.invokeJoinpointUsingReflection(target, method, argsToUse);
 				}
 				else {
-					// We need to create a method invocation... 创建一个方法执行器
+					// We need to create a method invocation... 创建一个方法执行器   执行代理类的入口
 					retVal = new CglibMethodInvocation(proxy, target, method, args, targetClass, chain, methodProxy).proceed();
 				}
 				return processReturnType(proxy, target, method, args, retVal);
