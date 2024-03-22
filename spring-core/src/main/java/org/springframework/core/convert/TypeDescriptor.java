@@ -30,7 +30,7 @@ import java.util.stream.Stream;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotatedElementUtils;
-import org.springframework.lang.NonNull;
+import org.springframework.lang.Contract;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
@@ -464,7 +464,7 @@ public class TypeDescriptor implements Serializable {
 	 * @see #narrow(Object)
 	 */
 	@Nullable
-	public TypeDescriptor getMapValueTypeDescriptor(Object mapValue) {
+	public TypeDescriptor getMapValueTypeDescriptor(@Nullable Object mapValue) {
 		return narrow(mapValue, getMapValueTypeDescriptor());
 	}
 
@@ -552,10 +552,6 @@ public class TypeDescriptor implements Serializable {
 		return builder.toString();
 	}
 
-	private static String getName(Class<?> clazz) {
-		String canonicalName = clazz.getCanonicalName();
-		return (canonicalName != null ? canonicalName : clazz.getName());
-	}
 
 	/**
 	 * Create a new type descriptor for an object.
@@ -567,6 +563,7 @@ public class TypeDescriptor implements Serializable {
 	 * @return the type descriptor
 	 */
 	@Nullable
+	@Contract("!null -> !null; null -> null")
 	public static TypeDescriptor forObject(@Nullable Object source) {
 		return (source != null ? valueOf(source.getClass()) : null);
 	}
@@ -738,6 +735,11 @@ public class TypeDescriptor implements Serializable {
 		return new TypeDescriptor(property).nested(nestingLevel);
 	}
 
+	private static String getName(Class<?> clazz) {
+		String canonicalName = clazz.getCanonicalName();
+		return (canonicalName != null ? canonicalName : clazz.getName());
+	}
+
 
 	/**
 	 * Adapter class for exposing a {@code TypeDescriptor}'s annotations as an
@@ -751,7 +753,7 @@ public class TypeDescriptor implements Serializable {
 
 		private final Annotation[] annotations;
 
-		private AnnotatedElementAdapter(@NonNull Annotation[] annotations) {
+		private AnnotatedElementAdapter(Annotation[] annotations) {
 			this.annotations = annotations;
 		}
 
@@ -764,7 +766,7 @@ public class TypeDescriptor implements Serializable {
 
 		@Override
 		public boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
-			for (Annotation annotation : getAnnotations()) {
+			for (Annotation annotation : this.annotations) {
 				if (annotation.annotationType() == annotationClass) {
 					return true;
 				}
@@ -776,7 +778,7 @@ public class TypeDescriptor implements Serializable {
 		@Nullable
 		@SuppressWarnings("unchecked")
 		public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-			for (Annotation annotation : getAnnotations()) {
+			for (Annotation annotation : this.annotations) {
 				if (annotation.annotationType() == annotationClass) {
 					return (T) annotation;
 				}
@@ -811,7 +813,7 @@ public class TypeDescriptor implements Serializable {
 
 		@Override
 		public String toString() {
-			return "AnnotatedElementAdapter annotations=" + Arrays.toString(this.annotations);
+			return Arrays.toString(this.annotations);
 		}
 	}
 

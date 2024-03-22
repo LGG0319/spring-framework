@@ -242,7 +242,9 @@ public class Indexer extends SpelNodeImpl {
 		SpelNodeImpl index = this.children[0];
 
 		if (this.indexedType == IndexedType.ARRAY) {
-			int insn = switch (this.exitTypeDescriptor) {
+			String exitTypeDescriptor = this.exitTypeDescriptor;
+			Assert.state(exitTypeDescriptor != null, "Array not compilable without descriptor");
+			int insn = switch (exitTypeDescriptor) {
 				case "D" -> {
 					mv.visitTypeInsn(CHECKCAST, "[D");
 					yield DALOAD;
@@ -278,8 +280,8 @@ public class Indexer extends SpelNodeImpl {
 					yield CALOAD;
 				}
 				default -> {
-					mv.visitTypeInsn(CHECKCAST, "["+ this.exitTypeDescriptor +
-							(CodeFlow.isPrimitiveArray(this.exitTypeDescriptor) ? "" : ";"));
+					mv.visitTypeInsn(CHECKCAST, "["+ exitTypeDescriptor +
+							(CodeFlow.isPrimitiveArray(exitTypeDescriptor) ? "" : ";"));
 					yield AALOAD;
 				}
 			};
@@ -323,6 +325,7 @@ public class Indexer extends SpelNodeImpl {
 			CompilablePropertyAccessor compilablePropertyAccessor = (CompilablePropertyAccessor) this.cachedReadAccessor;
 			Assert.state(compilablePropertyAccessor != null, "No cached read accessor");
 			String propertyName = (String) stringLiteral.getLiteralValue().getValue();
+			Assert.state(propertyName != null, "No property name");
 			compilablePropertyAccessor.generateCode(propertyName, mv, cf);
 		}
 
@@ -563,6 +566,7 @@ public class Indexer extends SpelNodeImpl {
 		}
 
 		@Override
+		@SuppressWarnings("NullAway")
 		public TypedValue getValue() {
 			Class<?> targetObjectRuntimeClass = getObjectClass(this.targetObject);
 			try {
@@ -601,6 +605,7 @@ public class Indexer extends SpelNodeImpl {
 		}
 
 		@Override
+		@SuppressWarnings("NullAway")
 		public void setValue(@Nullable Object newValue) {
 			Class<?> contextObjectClass = getObjectClass(this.targetObject);
 			try {

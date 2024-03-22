@@ -18,83 +18,117 @@ package org.springframework.test.context.bean.override.convention;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.Objects;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.ResolvableType;
-import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.test.context.bean.override.convention.TestBeanOverrideProcessor.MethodConventionOverrideMetadata;
 import org.springframework.test.context.bean.override.example.ExampleService;
 import org.springframework.test.context.bean.override.example.FailingExampleService;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatException;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+import static org.springframework.test.context.bean.override.convention.TestBeanOverrideProcessor.findTestBeanFactoryMethod;
 
+/**
+ * Tests for {@link TestBeanOverrideProcessor}.
+ *
+ * @author Simon Baslé
+ * @author Sam Brannen
+ * @since 6.2
+ */
 class TestBeanOverrideProcessorTests {
 
 	@Test
-	void ensureMethodFindsFromList() {
-		Method m = TestBeanOverrideProcessor.ensureMethod(MethodConventionConf.class, ExampleService.class,
-				"example1", "example2", "example3");
+	void findTestBeanFactoryMethodFindsFromCandidateNames() {
+		Class<?> clazz = MethodConventionConf.class;
+		Class<?> returnType = ExampleService.class;
 
-		assertThat(m.getName()).isEqualTo("example2");
+		Method method = findTestBeanFactoryMethod(clazz, returnType, "example1", "example2", "example3");
+
+		assertThat(method.getName()).isEqualTo("example2");
 	}
 
 	@Test
-	void ensureMethodNotFound() {
-		assertThatException().isThrownBy(() -> TestBeanOverrideProcessor.ensureMethod(
-				MethodConventionConf.class, ExampleService.class, "example1", "example3"))
-				.withMessage("Found 0 static methods instead of exactly one, matching a name in [example1, example3] with return type " +
-						ExampleService.class.getName() + " on class " + MethodConventionConf.class.getName())
-				.isInstanceOf(IllegalStateException.class);
+	void findTestBeanFactoryMethodNotFound() {
+		Class<?> clazz = MethodConventionConf.class;
+		Class<?> returnType = ExampleService.class;
+
+		assertThatIllegalStateException()
+				.isThrownBy(() -> findTestBeanFactoryMethod(clazz, returnType, "example1", "example3"))
+				.withMessage("""
+						Failed to find a static test bean factory method in %s with return type %s \
+						whose name matches one of the supported candidates %s""",
+						clazz.getName(), returnType.getName(), List.of("example1", "example3"));
 	}
 
 	@Test
-	void ensureMethodTwoFound() {
-		assertThatException().isThrownBy(() -> TestBeanOverrideProcessor.ensureMethod(
-				MethodConventionConf.class, ExampleService.class, "example2", "example4"))
-				.withMessage("Found 2 static methods instead of exactly one, matching a name in [example2, example4] with return type " +
-						ExampleService.class.getName() + " on class " + MethodConventionConf.class.getName())
-				.isInstanceOf(IllegalStateException.class);
+	void findTestBeanFactoryMethodTwoFound() {
+		Class<?> clazz = MethodConventionConf.class;
+		Class<?> returnType = ExampleService.class;
+
+		assertThatIllegalStateException()
+				.isThrownBy(() -> findTestBeanFactoryMethod(clazz, returnType, "example2", "example4"))
+				.withMessage("""
+						Found %d competing static test bean factory methods in %s with return type %s \
+						whose name matches one of the supported candidates %s""".formatted(
+								2, clazz.getName(), returnType.getName(), List.of("example2", "example4")));
 	}
 
 	@Test
-	void ensureMethodNoNameProvided() {
-		assertThatException().isThrownBy(() -> TestBeanOverrideProcessor.ensureMethod(
-				MethodConventionConf.class, ExampleService.class))
-				.withMessage("At least one expectedMethodName is required")
-				.isInstanceOf(IllegalArgumentException.class);
+	void findTestBeanFactoryMethodNoNameProvided() {
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> findTestBeanFactoryMethod(MethodConventionConf.class, ExampleService.class))
+				.withMessage("At least one candidate method name is required");
 	}
 
 	@Test
-	void createMetaDataForUnknownExplicitMethod() throws NoSuchFieldException {
-		Field f = ExplicitMethodNameConf.class.getField("a");
-		final TestBean overrideAnnotation = Objects.requireNonNull(AnnotationUtils.getAnnotation(f, TestBean.class));
+	void createMetaDataForUnknownExplicitMethod() throws Exception {
+		Class<?> clazz = ExplicitMethodNameConf.class;
+		Class<?> returnType = ExampleService.class;
+		Field field = clazz.getField("a");
+		TestBean overrideAnnotation = field.getAnnotation(TestBean.class);
+		assertThat(overrideAnnotation).isNotNull();
+
 		TestBeanOverrideProcessor processor = new TestBeanOverrideProcessor();
-		assertThatException().isThrownBy(() -> processor.createMetadata(f, overrideAnnotation, ResolvableType.forClass(ExampleService.class)))
-				.withMessage("Found 0 static methods instead of exactly one, matching a name in [explicit1] with return type " +
-						ExampleService.class.getName() + " on class " + ExplicitMethodNameConf.class.getName())
-				.isInstanceOf(IllegalStateException.class);
+		assertThatIllegalStateException()
+				.isThrownBy(() -> processor.createMetadata(field, overrideAnnotation, ResolvableType.forClass(returnType)))
+				.withMessage("""
+						Failed to find a static test bean factory method in %s with return type %s \
+						whose name matches one of the supported candidates %s""",
+						clazz.getName(), returnType.getName(), List.of("explicit1"));
 	}
 
 	@Test
-	void createMetaDataForKnownExplicitMethod() throws NoSuchFieldException {
-		Field f = ExplicitMethodNameConf.class.getField("b");
-		final TestBean overrideAnnotation = Objects.requireNonNull(AnnotationUtils.getAnnotation(f, TestBean.class));
+	void createMetaDataForKnownExplicitMethod() throws Exception {
+		Class<?> returnType = ExampleService.class;
+		Field field = ExplicitMethodNameConf.class.getField("b");
+		TestBean overrideAnnotation = field.getAnnotation(TestBean.class);
+		assertThat(overrideAnnotation).isNotNull();
+
 		TestBeanOverrideProcessor processor = new TestBeanOverrideProcessor();
-		assertThat(processor.createMetadata(f, overrideAnnotation, ResolvableType.forClass(ExampleService.class)))
-				.isInstanceOf(TestBeanOverrideProcessor.MethodConventionOverrideMetadata.class);
+		assertThat(processor.createMetadata(field, overrideAnnotation, ResolvableType.forClass(returnType)))
+				.isInstanceOf(MethodConventionOverrideMetadata.class);
 	}
 
 	@Test
-	void createMetaDataWithDeferredEnsureMethodCheck() throws NoSuchFieldException {
-		Field f = MethodConventionConf.class.getField("field");
-		final TestBean overrideAnnotation = Objects.requireNonNull(AnnotationUtils.getAnnotation(f, TestBean.class));
+	void createMetaDataWithDeferredCheckForExistenceOfConventionBasedFactoryMethod() throws Exception {
+		Class<?> returnType = ExampleService.class;
+		Field field = MethodConventionConf.class.getField("field");
+		TestBean overrideAnnotation = field.getAnnotation(TestBean.class);
+		assertThat(overrideAnnotation).isNotNull();
+
 		TestBeanOverrideProcessor processor = new TestBeanOverrideProcessor();
-		assertThat(processor.createMetadata(f, overrideAnnotation, ResolvableType.forClass(ExampleService.class)))
-				.isInstanceOf(TestBeanOverrideProcessor.MethodConventionOverrideMetadata.class);
+		// When in convention-based mode, createMetadata() will not verify that
+		// the factory method actually exists. So, we don't expect an exception
+		// for this use case.
+		assertThat(processor.createMetadata(field, overrideAnnotation, ResolvableType.forClass(returnType)))
+				.isInstanceOf(MethodConventionOverrideMetadata.class);
 	}
+
 
 	static class MethodConventionConf {
 
@@ -127,4 +161,5 @@ class TestBeanOverrideProcessorTests {
 			return new FailingExampleService();
 		}
 	}
+
 }
