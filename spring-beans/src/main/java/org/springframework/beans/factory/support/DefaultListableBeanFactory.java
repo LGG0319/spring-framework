@@ -1332,10 +1332,12 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		}
 	}
 
+	// 注册单例bean
 	@Override
 	public void registerSingleton(String beanName, Object singletonObject) throws IllegalStateException {
 		super.registerSingleton(beanName, singletonObject);
 		updateManualSingletonNames(set -> set.add(beanName), set -> !this.beanDefinitionMap.containsKey(beanName));
+		// 清空allBeanNamesByType和singletonBeanNamesByType
 		clearByTypeCache();
 	}
 
@@ -1364,10 +1366,17 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	 * (if this condition does not apply, the action can be skipped)
 	 */
 	private void updateManualSingletonNames(Consumer<Set<String>> action, Predicate<Set<String>> condition) {
+		// 判断bean的创建过程是否已经开始了
+		// 调用抽象父类AbstractBeanFactory#hasBeanCreationStarted()方法
+		// 判断AbstractBeanFactory成员变量alreadyCreated Set不为空
 		if (hasBeanCreationStarted()) {
 			// Cannot modify startup-time collection elements anymore (for stable iteration)
+			// bean创建过程已经开始了
+			// 锁住成员变量beanDefinitionMap
 			synchronized (this.beanDefinitionMap) {
 				if (condition.test(this.manualSingletonNames)) {
+					// 如果bean定义Map,  beanDefinitionMap已经包含了bean
+					// 维护到手工单例bean名称manualSingletonNames中
 					Set<String> updatedSingletons = new LinkedHashSet<>(this.manualSingletonNames);
 					action.accept(updatedSingletons);
 					this.manualSingletonNames = updatedSingletons;
@@ -1376,7 +1385,10 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		}
 		else {
 			// Still in startup registration phase
+			// bean还没有注册过, 仍处于启动注册阶段
 			if (condition.test(this.manualSingletonNames)) {
+				// 如果beanDefinitionMap不包含beanName
+				// 那么添加到manualSingletonNames
 				action.accept(this.manualSingletonNames);
 			}
 		}

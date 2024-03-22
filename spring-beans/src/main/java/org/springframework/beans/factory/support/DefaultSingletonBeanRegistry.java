@@ -69,6 +69,7 @@ import org.springframework.util.StringUtils;
  * @see #registerDisposableBean
  * @see org.springframework.beans.factory.DisposableBean
  * @see org.springframework.beans.factory.config.ConfigurableBeanFactory
+ * 默认单例bean注册器
  */
 public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements SingletonBeanRegistry {
 
@@ -129,9 +130,10 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	/** Map between depending bean names: bean name to Set of bean names for the bean's dependencies. */
 	private final Map<String, Set<String>> dependenciesForBeanMap = new ConcurrentHashMap<>(64);
 
-
+	// 手工注册单例bean
 	@Override
 	public void registerSingleton(String beanName, Object singletonObject) throws IllegalStateException {
+		// 判断名称和值不可以为空
 		Assert.notNull(beanName, "Bean name must not be null");
 		Assert.notNull(singletonObject, "Singleton object must not be null");
 		this.singletonLock.lock();
@@ -150,6 +152,7 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	 * @param singletonObject the singleton object
 	 */
 	protected void addSingleton(String beanName, Object singletonObject) {
+		// 判断bean是否为空
 		Object oldObject = this.singletonObjects.putIfAbsent(beanName, singletonObject);
 		if (oldObject != null) {
 			throw new IllegalStateException("Could not register object [" + singletonObject +
@@ -157,6 +160,7 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 		}
 		this.singletonFactories.remove(beanName);
 		this.earlySingletonObjects.remove(beanName);
+		// 添加一个单例bean
 		this.registeredSingletons.add(beanName);
 
 		Consumer<Object> callback = this.singletonCallbacks.get(beanName);

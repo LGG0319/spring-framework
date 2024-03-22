@@ -109,6 +109,7 @@ public class AnnotatedBeanDefinitionReader {
 	 * @see #registerBean(Class, String, Class...)
 	 */
 	public void setEnvironment(Environment environment) {
+		// 初始化conditionEvaluator
 		this.conditionEvaluator = new ConditionEvaluator(this.registry, environment, null);
 	}
 
@@ -141,6 +142,7 @@ public class AnnotatedBeanDefinitionReader {
 	 */
 	public void register(Class<?>... componentClasses) {
 		for (Class<?> componentClass : componentClasses) {
+			// 单个Bean注册
 			registerBean(componentClass);
 		}
 	}

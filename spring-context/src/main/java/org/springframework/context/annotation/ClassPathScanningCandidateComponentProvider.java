@@ -270,6 +270,7 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 	public void setEnvironment(Environment environment) {
 		Assert.notNull(environment, "Environment must not be null");
 		this.environment = environment;
+		// conditionEvaluator重置为null
 		this.conditionEvaluator = null;
 	}
 
