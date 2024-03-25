@@ -168,6 +168,7 @@ class ConfigurationClassParser {
 			BeanDefinition bd = holder.getBeanDefinition();
 			try {
 				if (bd instanceof AnnotatedBeanDefinition annotatedBeanDef) {
+					// 解析指定类
 					parse(annotatedBeanDef, holder.getBeanName());
 				}
 				else if (bd instanceof AbstractBeanDefinition abstractBeanDef && abstractBeanDef.hasBeanClass()) {
@@ -190,6 +191,7 @@ class ConfigurationClassParser {
 	}
 
 	private void parse(AnnotatedBeanDefinition beanDef, String beanName) {
+		// 解析配置类及配置类上的各种注解（@Import等）
 		processConfigurationClass(
 				new ConfigurationClass(beanDef.getMetadata(), beanName, (beanDef instanceof ScannedGenericBeanDefinition)),
 				DEFAULT_EXCLUSION_FILTER);
@@ -264,6 +266,7 @@ class ConfigurationClassParser {
 		try {
 			sourceClass = asSourceClass(configClass, filter);
 			do {
+				// 解析配置类及配置类上的各种注解（@Import等）
 				sourceClass = doProcessConfigurationClass(configClass, sourceClass, filter);
 			}
 			while (sourceClass != null);
@@ -572,7 +575,7 @@ class ConfigurationClassParser {
 		}
 	}
 
-	// 处理@lmport注解
+	// 处理@Import注解
 	private void processImports(ConfigurationClass configClass, SourceClass currentSourceClass,
 			Collection<SourceClass> importCandidates, Predicate<String> filter, boolean checkForCircularImports) {
 
@@ -590,6 +593,7 @@ class ConfigurationClassParser {
 					if (candidate.isAssignable(ImportSelector.class)) {
 						// Candidate class is an ImportSelector -> delegate to it to determine imports
 						Class<?> candidateClass = candidate.loadClass();
+						 // 获取所有注解有 @Import 且 实现了ImportSelector接口的类
 						ImportSelector selector = ParserStrategyUtils.instantiateClass(candidateClass, ImportSelector.class,
 								this.environment, this.resourceLoader, this.registry);
 						// 获取选择器的额外过滤器
@@ -601,6 +605,7 @@ class ConfigurationClassParser {
 							this.deferredImportSelectorHandler.handle(configClass, deferredImportSelector);
 						}
 						else {
+							// 执行 selectImports 方法
 							String[] importClassNames = selector.selectImports(currentSourceClass.getMetadata());
 							Collection<SourceClass> importSourceClasses = asSourceClasses(importClassNames, filter);
 							// 递归处理(被import的类也有可能被@Import注解修饰)
