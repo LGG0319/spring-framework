@@ -92,7 +92,7 @@ public abstract class CoroutinesUtils {
 	 * @return the method invocation result as reactive stream
 	 * @throws IllegalArgumentException if {@code method} is not a suspending function
 	 */
-	public static Publisher<?> invokeSuspendingFunction(Method method, Object target, Object... args) {
+	public static Publisher<?> invokeSuspendingFunction(Method method, Object target, @Nullable Object... args) {
 		return invokeSuspendingFunction(Dispatchers.getUnconfined(), method, target, args);
 	}
 
@@ -108,9 +108,9 @@ public abstract class CoroutinesUtils {
 	 * @throws IllegalArgumentException if {@code method} is not a suspending function
 	 * @since 6.0
 	 */
-	@SuppressWarnings({"deprecation", "DataFlowIssue"})
+	@SuppressWarnings({"deprecation", "DataFlowIssue", "NullAway"})
 	public static Publisher<?> invokeSuspendingFunction(
-			CoroutineContext context, Method method, @Nullable Object target, Object... args) {
+			CoroutineContext context, Method method, @Nullable Object target, @Nullable Object... args) {
 
 		Assert.isTrue(KotlinDetector.isSuspendingFunction(method), "Method must be a suspending function");
 		KFunction<?> function = ReflectJvmMapping.getKotlinFunction(method);

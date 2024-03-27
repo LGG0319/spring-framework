@@ -252,6 +252,7 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	 * with, if necessary
 	 * @return the registered singleton object
 	 */
+	@SuppressWarnings("NullAway")
 	public Object getSingleton(String beanName, ObjectFactory<?> singletonFactory) {
 		Assert.notNull(beanName, "Bean name must not be null");
 
