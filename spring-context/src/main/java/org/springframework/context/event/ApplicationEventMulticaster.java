@@ -35,6 +35,7 @@ import org.springframework.lang.Nullable;
  * @author Juergen Hoeller
  * @author Stephane Nicoll
  * @see ApplicationListener
+ * 负责事件的广播发布
  */
 public interface ApplicationEventMulticaster {
 
@@ -43,6 +44,7 @@ public interface ApplicationEventMulticaster {
 	 * @param listener the listener to add
 	 * @see #removeApplicationListener(ApplicationListener)
 	 * @see #removeApplicationListeners(Predicate)
+	 * 添加事件监听器
 	 */
 	void addApplicationListener(ApplicationListener<?> listener);
 
@@ -51,6 +53,7 @@ public interface ApplicationEventMulticaster {
 	 * @param listenerBeanName the name of the listener bean to add
 	 * @see #removeApplicationListenerBean(String)
 	 * @see #removeApplicationListenerBeans(Predicate)
+	 * 添加事件监听器，使用容器中的bean
 	 */
 	void addApplicationListenerBean(String listenerBeanName);
 
@@ -59,6 +62,7 @@ public interface ApplicationEventMulticaster {
 	 * @param listener the listener to remove
 	 * @see #addApplicationListener(ApplicationListener)
 	 * @see #removeApplicationListeners(Predicate)
+	 * 移除事件监听器
 	 */
 	void removeApplicationListener(ApplicationListener<?> listener);
 
@@ -103,6 +107,7 @@ public interface ApplicationEventMulticaster {
 	 * <p>After a remove call, the multicaster will perform no action
 	 * on event notification until new listeners are registered.
 	 * @see #removeApplicationListeners(Predicate)
+	 * 移除所有事件监听器
 	 */
 	void removeAllListeners();
 
@@ -114,6 +119,8 @@ public interface ApplicationEventMulticaster {
 	 * execution, it must be run within the calling thread of this multicast call.
 	 * @param event the event to multicast
 	 * @see ApplicationListener#supportsAsyncExecution()
+	 * 将给定的应用程序事件多播到适当的侦听器。
+	 * 发布事件
 	 */
 	void multicastEvent(ApplicationEvent event);
 

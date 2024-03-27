@@ -48,6 +48,7 @@ import org.springframework.util.ErrorHandler;
  * @author Stephane Nicoll
  * @author Brian Clozel
  * @see #setTaskExecutor
+ * 事件发布监听器
  */
 public class SimpleApplicationEventMulticaster extends AbstractApplicationEventMulticaster {
 
@@ -143,6 +144,7 @@ public class SimpleApplicationEventMulticaster extends AbstractApplicationEventM
 	public void multicastEvent(ApplicationEvent event, @Nullable ResolvableType eventType) {
 		ResolvableType type = (eventType != null ? eventType : ResolvableType.forInstance(event));
 		Executor executor = getTaskExecutor();
+		// 获取 ApplicationListener 事件，并执行
 		for (ApplicationListener<?> listener : getApplicationListeners(event, type)) {
 			// 判断此侦听器是否支持异步执行
 			if (executor != null && listener.supportsAsyncExecution()) {
