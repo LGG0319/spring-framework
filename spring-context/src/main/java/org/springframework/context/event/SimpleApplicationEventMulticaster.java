@@ -134,17 +134,18 @@ public class SimpleApplicationEventMulticaster extends AbstractApplicationEventM
 		return this.errorHandler;
 	}
 
+	// 根据事件类型发布事件，执行
 	@Override
 	public void multicastEvent(ApplicationEvent event) {
 		multicastEvent(event, null);
 	}
 
-	// 发布事件，执行
+	// 根据事件类型发布事件，执行
 	@Override
 	public void multicastEvent(ApplicationEvent event, @Nullable ResolvableType eventType) {
 		ResolvableType type = (eventType != null ? eventType : ResolvableType.forInstance(event));
 		Executor executor = getTaskExecutor();
-		// 获取 ApplicationListener 事件，并执行
+		// 根据传入事件类型获取 ApplicationListener 事件，并执行
 		for (ApplicationListener<?> listener : getApplicationListeners(event, type)) {
 			// 判断此侦听器是否支持异步执行
 			if (executor != null && listener.supportsAsyncExecution()) {
