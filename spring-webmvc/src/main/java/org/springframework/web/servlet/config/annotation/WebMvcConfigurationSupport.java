@@ -188,6 +188,7 @@ import org.springframework.web.util.pattern.PathPatternParser;
  * @since 3.1
  * @see EnableWebMvc
  * @see WebMvcConfigurer
+ * SpringMVC提供的扩展类，用于提供拦截器、资源处理器等注册功能
  */
 public class WebMvcConfigurationSupport implements ApplicationContextAware, ServletContextAware {
 
