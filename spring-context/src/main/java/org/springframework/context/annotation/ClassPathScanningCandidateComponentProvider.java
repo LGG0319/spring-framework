@@ -89,6 +89,7 @@ import org.springframework.util.ClassUtils;
  * @see org.springframework.core.type.AnnotationMetadata
  * @see ScannedGenericBeanDefinition
  * @see CandidateComponentsIndex
+ * 按自定义的类型，查找classpath下符合要求的class文件
  */
 @SuppressWarnings("removal") // components index
 public class ClassPathScanningCandidateComponentProvider implements EnvironmentCapable, ResourceLoaderAware {
