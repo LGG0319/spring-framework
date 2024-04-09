@@ -139,6 +139,8 @@ import org.springframework.web.util.WebUtils;
  * @see #setContextConfigLocation
  * @see #setContextInitializerClasses
  * @see #setNamespace
+ * FrameworkServlet 继承自 HttpServletBean，而 HttpServletBean 继承自 HttpServlet
+ * 实现了 HttpServlet#service 方法，由 springmvc 开始处理请求
  */
 @SuppressWarnings("serial")
 public abstract class FrameworkServlet extends HttpServletBean implements ApplicationContextAware {
@@ -882,6 +884,7 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 			throws ServletException, IOException {
 
 		if (HTTP_SERVLET_METHODS.contains(request.getMethod())) {
+			// 调用 HttpServlet 的 service 方法处理请求
 			super.service(request, response);
 		}
 		else {
@@ -895,6 +898,7 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 	 * with a {@code NoBodyResponse} that just captures the content length.
 	 * @see #doService
 	 * @see #doHead
+	 * 由 springmvc 开始处理请求
 	 */
 	@Override
 	protected final void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -992,6 +996,7 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 	 * Process this request, publishing an event regardless of the outcome.
 	 * <p>The actual event handling is performed by the abstract
 	 * {@link #doService} template method.
+	 * 处理请求
 	 */
 	protected final void processRequest(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
@@ -1011,6 +1016,7 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 		initContextHolders(request, localeContext, requestAttributes);
 
 		try {
+			// 处理请求
 			doService(request, response);
 		}
 		catch (ServletException | IOException ex) {

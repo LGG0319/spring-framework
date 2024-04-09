@@ -976,6 +976,7 @@ public class DispatcherServlet extends FrameworkServlet {
 		}
 
 		try {
+			// 请求实际调度
 			doDispatch(request, response);
 		}
 		finally {
