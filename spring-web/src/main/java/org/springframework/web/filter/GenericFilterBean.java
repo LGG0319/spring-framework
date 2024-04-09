@@ -76,6 +76,7 @@ import org.springframework.web.context.support.StandardServletEnvironment;
  * @see #addRequiredProperty
  * @see #initFilterBean
  * @see #doFilter
+ * 是Filter接口实现类的基类。主要用来获取web.xml中配置的filter中设置init-param的的值，然后在将这些值赋值给对配置的filter中的属性
  */
 public abstract class GenericFilterBean implements Filter, BeanNameAware, EnvironmentAware,
 		EnvironmentCapable, ServletContextAware, InitializingBean, DisposableBean {
