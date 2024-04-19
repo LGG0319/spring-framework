@@ -39,6 +39,7 @@ import jakarta.servlet.ServletResponse;
  *
  * @author Dave Syer
  * @since 3.1
+ * 复合过滤器 内部包含一个Filters,传入一个空 FilterProxy 可链式调用执行Security 用来链式调用 Filter
  */
 public class CompositeFilter implements Filter {
 
@@ -53,6 +54,7 @@ public class CompositeFilter implements Filter {
 	/**
 	 * Initialize all the filters, calling each one's init method in turn in the order supplied.
 	 * @see Filter#init(FilterConfig)
+	 * 初始化过滤器
 	 */
 	@Override
 	public void init(FilterConfig config) throws ServletException {
@@ -66,11 +68,12 @@ public class CompositeFilter implements Filter {
 	 * and executes them in order. Each filter delegates to the next one in the list, achieving
 	 * the normal behavior of a {@link FilterChain}, despite the fact that this is a {@link Filter}.
 	 * @see Filter#doFilter(ServletRequest, ServletResponse, FilterChain)
+	 * 执行过滤器
 	 */
 	@Override
 	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
 			throws IOException, ServletException {
-
+		// 每个请求会新建一个 VirtualFilterChain，然后调用执行
 		new VirtualFilterChain(chain, this.filters).doFilter(request, response);
 	}
 
