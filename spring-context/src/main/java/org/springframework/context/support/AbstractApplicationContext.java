@@ -1038,7 +1038,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		// 3、初始化LoadTimeWeaverAware Bean实例对象
 		String[] weaverAwareNames = beanFactory.getBeanNamesForType(LoadTimeWeaverAware.class, false, false);
 		for (String weaverAwareName : weaverAwareNames) {
-			getBean(weaverAwareName);
+			beanFactory.getBean(weaverAwareName, LoadTimeWeaverAware.class);
 		}
 
 		// Stop using the temporary ClassLoader for type matching.

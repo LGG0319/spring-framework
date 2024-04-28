@@ -43,6 +43,7 @@ import org.springframework.expression.IndexAccessor;
 import org.springframework.expression.PropertyAccessor;
 import org.springframework.expression.TypedValue;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.expression.spel.support.SimpleEvaluationContext;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.expression.spel.testresources.Person;
 import org.springframework.lang.Nullable;
@@ -523,13 +524,15 @@ class IndexingTests {
 	@Nested
 	class IndexAccessorTests {  // gh-26478
 
+		private final StandardEvaluationContext context = new StandardEvaluationContext();
+		private final SpelExpressionParser parser = new SpelExpressionParser();
+
 		@Test
 		void addingAndRemovingIndexAccessors() {
 			ObjectMapper objectMapper = new ObjectMapper();
 			IndexAccessor accessor1 = new JacksonArrayNodeIndexAccessor(objectMapper);
 			IndexAccessor accessor2 = new JacksonArrayNodeIndexAccessor(objectMapper);
 
-			StandardEvaluationContext context = new StandardEvaluationContext();
 			List<IndexAccessor> indexAccessors = context.getIndexAccessors();
 			assertThat(indexAccessors).isEmpty();
 
@@ -550,10 +553,8 @@ class IndexingTests {
 
 		@Test
 		void noSuitableIndexAccessorResultsInException() {
-			StandardEvaluationContext context = new StandardEvaluationContext();
 			assertThat(context.getIndexAccessors()).isEmpty();
 
-			SpelExpressionParser parser = new SpelExpressionParser();
 			Expression expr = parser.parseExpression("[0]");
 			assertThatExceptionOfType(SpelEvaluationException.class)
 					.isThrownBy(() -> expr.getValue(context, this))
@@ -563,7 +564,6 @@ class IndexingTests {
 
 		@Test
 		void canReadThrowsException() throws Exception {
-			StandardEvaluationContext context = new StandardEvaluationContext();
 			RuntimeException exception = new RuntimeException("Boom!");
 
 			IndexAccessor mock = mock();
@@ -571,7 +571,6 @@ class IndexingTests {
 			given(mock.canRead(any(), eq(this), any())).willThrow(exception);
 			context.addIndexAccessor(mock);
 
-			SpelExpressionParser parser = new SpelExpressionParser();
 			Expression expr = parser.parseExpression("[0]");
 			assertThatExceptionOfType(SpelEvaluationException.class)
 					.isThrownBy(() -> expr.getValue(context, this))
@@ -587,7 +586,6 @@ class IndexingTests {
 
 		@Test
 		void readThrowsException() throws Exception {
-			StandardEvaluationContext context = new StandardEvaluationContext();
 			RuntimeException exception = new RuntimeException("Boom!");
 
 			IndexAccessor mock = mock();
@@ -596,7 +594,6 @@ class IndexingTests {
 			given(mock.read(any(), eq(this), any())).willThrow(exception);
 			context.addIndexAccessor(mock);
 
-			SpelExpressionParser parser = new SpelExpressionParser();
 			Expression expr = parser.parseExpression("[0]");
 			assertThatExceptionOfType(SpelEvaluationException.class)
 					.isThrownBy(() -> expr.getValue(context, this))
@@ -613,7 +610,6 @@ class IndexingTests {
 
 		@Test
 		void canWriteThrowsException() throws Exception {
-			StandardEvaluationContext context = new StandardEvaluationContext();
 			RuntimeException exception = new RuntimeException("Boom!");
 
 			IndexAccessor mock = mock();
@@ -621,7 +617,6 @@ class IndexingTests {
 			given(mock.canWrite(eq(context), eq(this), eq(0))).willThrow(exception);
 			context.addIndexAccessor(mock);
 
-			SpelExpressionParser parser = new SpelExpressionParser();
 			Expression expr = parser.parseExpression("[0]");
 			assertThatExceptionOfType(SpelEvaluationException.class)
 					.isThrownBy(() -> expr.setValue(context, this, 999))
@@ -637,7 +632,6 @@ class IndexingTests {
 
 		@Test
 		void writeThrowsException() throws Exception {
-			StandardEvaluationContext context = new StandardEvaluationContext();
 			RuntimeException exception = new RuntimeException("Boom!");
 
 			IndexAccessor mock = mock();
@@ -646,7 +640,6 @@ class IndexingTests {
 			doThrow(exception).when(mock).write(any(), any(), any(), any());
 			context.addIndexAccessor(mock);
 
-			SpelExpressionParser parser = new SpelExpressionParser();
 			Expression expr = parser.parseExpression("[0]");
 			assertThatExceptionOfType(SpelEvaluationException.class)
 					.isThrownBy(() -> expr.setValue(context, this, 999))
@@ -663,8 +656,6 @@ class IndexingTests {
 
 		@Test
 		void readAndWriteIndex() {
-			StandardEvaluationContext context = new StandardEvaluationContext();
-
 			ObjectMapper objectMapper = new ObjectMapper();
 			context.addIndexAccessor(new JacksonArrayNodeIndexAccessor(objectMapper));
 
@@ -673,7 +664,6 @@ class IndexingTests {
 			ArrayNode arrayNode = objectMapper.createArrayNode();
 			arrayNode.addAll(List.of(node0, node1));
 
-			SpelExpressionParser parser = new SpelExpressionParser();
 			Expression expr = parser.parseExpression("[0]");
 			assertThat(expr.getValue(context, arrayNode)).isSameAs(node0);
 
@@ -696,6 +686,96 @@ class IndexingTests {
 			assertThat(expr.getValue(context, arrayNode)).isNull();
 		}
 
+		@Test
+		void readAndWriteIndexWithSimpleEvaluationContext() {
+			ObjectMapper objectMapper = new ObjectMapper();
+			SimpleEvaluationContext context = SimpleEvaluationContext.forReadWriteDataBinding()
+					.withIndexAccessors(new JacksonArrayNodeIndexAccessor(objectMapper))
+					.build();
+
+			TextNode node0 = new TextNode("node0");
+			TextNode node1 = new TextNode("node1");
+			ArrayNode arrayNode = objectMapper.createArrayNode();
+			arrayNode.addAll(List.of(node0, node1));
+
+			Expression expr = parser.parseExpression("[0]");
+			assertThat(expr.getValue(context, arrayNode)).isSameAs(node0);
+
+			TextNode nodeX = new TextNode("nodeX");
+			expr.setValue(context, arrayNode, nodeX);
+			// We use isEqualTo() instead of isSameAs(), since ObjectMapper.convertValue()
+			// converts the supplied TextNode to an equivalent JsonNode.
+			assertThat(expr.getValue(context, arrayNode)).isEqualTo(nodeX);
+
+			expr = parser.parseExpression("[1]");
+			assertThat(expr.getValue(context, arrayNode)).isSameAs(node1);
+		}
+
+		@Test  // gh-32706
+		void readIndexWithStringIndexType() {
+			BirdNameToColorMappings birdNameMappings = new BirdNameToColorMappings();
+
+			// Without a registered BirdNameToColorMappingsIndexAccessor, we should
+			// be able to index into an object via a property name.
+			Expression propertyExpression = parser.parseExpression("['property']");
+			assertThat(propertyExpression.getValue(context, birdNameMappings)).isEqualTo("enigma");
+
+			context.addIndexAccessor(new BirdNameToColorMappingsIndexAccessor());
+
+			Expression expression = parser.parseExpression("['cardinal']");
+			assertThat(expression.getValue(context, birdNameMappings)).isEqualTo(Color.RED);
+
+			// With a registered BirdNameToColorMappingsIndexAccessor, an attempt
+			// to index into an object via a property name should fail.
+			assertThatExceptionOfType(SpelEvaluationException.class)
+					.isThrownBy(() -> propertyExpression.getValue(context, birdNameMappings))
+					.withMessageEndingWith("A problem occurred while attempting to read index '%s' in '%s'",
+							"property", BirdNameToColorMappings.class.getName())
+					.havingCause().withMessage("unknown bird color: property");
+		}
+
+		static class BirdNameToColorMappings {
+
+			public final String property = "enigma";
+
+			public Color get(String name) {
+				return switch (name) {
+					case "cardinal" -> Color.RED;
+					case "blue jay" -> Color.BLUE;
+					default -> throw new RuntimeException("unknown bird color: " + name);
+				};
+			}
+		}
+
+		static class BirdNameToColorMappingsIndexAccessor implements IndexAccessor {
+
+			@Override
+			public Class<?>[] getSpecificTargetClasses() {
+				return new Class[] { BirdNameToColorMappings.class };
+			}
+
+			@Override
+			public boolean canRead(EvaluationContext context, Object target, Object index) {
+				return (target instanceof BirdNameToColorMappings && index instanceof String);
+			}
+
+			@Override
+			public TypedValue read(EvaluationContext context, Object target, Object index) {
+				BirdNameToColorMappings mappings = (BirdNameToColorMappings) target;
+				String name = (String) index;
+				return new TypedValue(mappings.get(name));
+			}
+
+			@Override
+			public boolean canWrite(EvaluationContext context, Object target, Object index) {
+				return false;
+			}
+
+			@Override
+			public void write(EvaluationContext context, Object target, Object index, @Nullable Object newValue) {
+				throw new UnsupportedOperationException();
+			}
+		}
 
 		/**
 		 * {@link IndexAccessor} that knows how to read and write indexes in a
