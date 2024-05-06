@@ -14,19 +14,25 @@
  * limitations under the License.
  */
 
-package org.springframework.docs.dataaccess.jdbc.jdbcJdbcTemplateidioms;
+package org.springframework.util;
 
-import javax.sql.DataSource;
+import java.util.List;
 
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.junit.jupiter.api.Test;
 
-public class JdbcCorporateEventDao implements CorporateEventDao {
+import static org.assertj.core.api.Assertions.assertThat;
 
-	private JdbcTemplate jdbcTemplate;
+/**
+ * @author Arjen Poutsma
+ */
+final class FilteredIteratorTests {
 
-	public void setDataSource(DataSource dataSource) {
-		this.jdbcTemplate = new JdbcTemplate(dataSource);
+	@Test
+	void filter() {
+		List<String> list = List.of("foo", "bar", "baz");
+		FilteredIterator<String> filtered = new FilteredIterator<>(list.iterator(), s -> !s.equals("bar"));
+
+		assertThat(filtered).toIterable().containsExactly("foo", "baz");
 	}
 
-	// JDBC-backed implementations of the methods on the CorporateEventDao follow...
 }

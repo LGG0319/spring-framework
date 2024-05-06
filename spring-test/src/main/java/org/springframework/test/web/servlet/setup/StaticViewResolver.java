@@ -14,7 +14,31 @@
  * limitations under the License.
  */
 
-package org.springframework.docs.dataaccess.jdbc.jdbcJdbcTemplateidioms;
+package org.springframework.test.web.servlet.setup;
 
-public interface CorporateEventRepository {
+import java.util.Locale;
+
+import org.springframework.lang.Nullable;
+import org.springframework.web.servlet.View;
+import org.springframework.web.servlet.ViewResolver;
+
+/**
+ * A {@link ViewResolver} that always returns same View.
+ *
+ * @author Rob Winch
+ * @since 6.2
+ */
+class StaticViewResolver implements ViewResolver {
+
+	private final View view;
+
+	public StaticViewResolver(View view) {
+		this.view = view;
+	}
+
+	@Override
+	@Nullable
+	public View resolveViewName(String viewName, Locale locale) {
+		return this.view;
+	}
 }
