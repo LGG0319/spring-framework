@@ -39,13 +39,13 @@ import org.springframework.beans.testfixture.beans.TestBean;
 import org.springframework.beans.testfixture.beans.subpkg.DeepBean;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 /**
  * @author Rob Harrop
  * @author Rod Johnson
  * @author Chris Beams
+ * @author Juergen Hoeller
  * @author Yanming Zhou
  */
 class AspectJExpressionPointcutTests {
@@ -60,7 +60,7 @@ class AspectJExpressionPointcutTests {
 
 
 	@BeforeEach
-	public void setup() throws NoSuchMethodException {
+	void setup() throws NoSuchMethodException {
 		getAge = TestBean.class.getMethod("getAge");
 		setAge = TestBean.class.getMethod("setAge", int.class);
 		setSomeNumber = TestBean.class.getMethod("setSomeNumber", Number.class);
@@ -193,7 +193,7 @@ class AspectJExpressionPointcutTests {
 
 
 	@Test
-	void testMatchWithArgs() throws Exception {
+	void testMatchWithArgs() {
 		String expression = "execution(void org.springframework.beans.testfixture.beans.TestBean.setSomeNumber(Number)) && args(Double)";
 
 		Pointcut pointcut = getPointcut(expression);
@@ -243,7 +243,7 @@ class AspectJExpressionPointcutTests {
 	@Test
 	void testInvalidExpression() {
 		String expression = "execution(void org.springframework.beans.testfixture.beans.TestBean.setSomeNumber(Number) && args(Double)";
-		assertThatIllegalArgumentException().isThrownBy(() -> getPointcut(expression).getClassFilter().matches(Object.class));
+		assertThat(getPointcut(expression).getClassFilter().matches(Object.class)).isFalse();
 	}
 
 	private TestBean getAdvisedProxy(String pointcutExpression, CallCountingInterceptor interceptor) {

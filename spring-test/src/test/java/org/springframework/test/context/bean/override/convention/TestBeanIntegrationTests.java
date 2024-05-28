@@ -36,10 +36,10 @@ import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass
 @SpringJUnitConfig
 public class TestBeanIntegrationTests {
 
-	@TestBean
+	@TestBean(name = "field")
 	String field;
 
-	@TestBean
+	@TestBean(name = "nestedField")
 	String nestedField;
 
 	@TestBean(name = "field")
@@ -48,10 +48,10 @@ public class TestBeanIntegrationTests {
 	@TestBean(name = "nestedField")
 	String renamed2;
 
-	@TestBean(methodName = "fieldTestOverride")
+	@TestBean(name = "methodRenamed1", methodName = "fieldTestOverride")
 	String methodRenamed1;
 
-	@TestBean(methodName = "nestedFieldTestOverride")
+	@TestBean(name = "methodRenamed2", methodName = "nestedFieldTestOverride")
 	String methodRenamed2;
 
 	static String fieldTestOverride() {
@@ -69,7 +69,7 @@ public class TestBeanIntegrationTests {
 	}
 
 	@Test
-	void fieldWithBeanNameHasOverride(ApplicationContext ctx) {
+	void renamedFieldHasOverride(ApplicationContext ctx) {
 		assertThat(ctx.getBean("field")).as("applicationContext").isEqualTo("fieldOverride");
 		assertThat(this.renamed1).as("injection point").isEqualTo("fieldOverride");
 	}
@@ -92,7 +92,7 @@ public class TestBeanIntegrationTests {
 						.cause()
 						.isInstanceOf(IllegalStateException.class)
 						.hasMessage("Unable to override bean 'noOriginalBean'; " +
-								"there is no bean definition to replace with that name"));
+								"there is no bean definition to replace with that name of type java.lang.String"));
 	}
 
 	@Test
@@ -107,7 +107,7 @@ public class TestBeanIntegrationTests {
 						.cause()
 						.isInstanceOf(IllegalStateException.class)
 						.hasMessage("Unable to override bean 'notPresent'; " +
-								"there is no bean definition to replace with that name"));
+								"there is no bean definition to replace with that name of type java.lang.String"));
 	}
 
 	@Test
@@ -142,6 +142,20 @@ public class TestBeanIntegrationTests {
 								"supported candidates [fieldTestOverride]"));
 	}
 
+	@Test
+	void testBeanFailingBeanOfWrongType() {
+		EngineExecutionResults results = EngineTestKit.engine("junit-jupiter")//
+				.selectors(selectClass(Failing5.class))//
+				.execute();
+
+		assertThat(results.allEvents().failed().stream()).hasSize(1).first()
+				.satisfies(e -> assertThat(e.getRequiredPayload(TestExecutionResult.class)
+						.getThrowable()).get(THROWABLE)
+						.rootCause().isInstanceOf(IllegalStateException.class)
+						.hasMessage("Unable to override bean 'notString'; there is no bean definition to replace with " +
+								"that name of type java.lang.String"));
+	}
+
 	@Nested
 	@DisplayName("With @TestBean on enclosing class")
 	class TestBeanNested {
@@ -153,7 +167,7 @@ public class TestBeanIntegrationTests {
 		}
 
 		@Test
-		void fieldWithBeanNameHasOverride(ApplicationContext ctx) {
+		void renamedFieldHasOverride(ApplicationContext ctx) {
 			assertThat(ctx.getBean("nestedField")).as("applicationContext").isEqualTo("nestedFieldOverride");
 			assertThat(TestBeanIntegrationTests.this.renamed2).isEqualTo("nestedFieldOverride");
 		}
@@ -209,7 +223,7 @@ public class TestBeanIntegrationTests {
 	@SpringJUnitConfig
 	static class Failing1 {
 
-		@TestBean
+		@TestBean(name = "noOriginalBean")
 		String noOriginalBean;
 
 		@Test
@@ -260,6 +274,27 @@ public class TestBeanIntegrationTests {
 		@Test
 		void ignored() {
 			fail("should fail earlier");
+		}
+	}
+
+	@SpringJUnitConfig
+	static class Failing5 {
+
+		@Bean("notString")
+		StringBuilder bean1() {
+			return new StringBuilder("not a String");
+		}
+
+		@TestBean(name = "notString")
+		String field;
+
+		@Test
+		void ignored() {
+			fail("should fail earlier");
+		}
+
+		static String fieldTestOverride() {
+			return "should be ignored";
 		}
 	}
 }

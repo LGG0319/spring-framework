@@ -119,9 +119,10 @@ public class AspectJAwareAdvisorAutoProxyCreator extends AbstractAdvisorAutoProx
 	}
 
 	@Override
-	public void destroy() throws Exception {
+	public void destroy() {
 		ShadowMatchUtils.clearCache();
 	}
+
 
 	/**
 	 * Implements AspectJ's {@link PartialComparable} interface for defining partial orderings.
