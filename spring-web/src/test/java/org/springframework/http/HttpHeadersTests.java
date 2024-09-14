@@ -214,9 +214,15 @@ class HttpHeadersTests {
 	}
 
 	@Test
-	void illegalETag() {
-		String eTag = "v2.6";
-		assertThatIllegalArgumentException().isThrownBy(() -> headers.setETag(eTag));
+	void eTagWithoutQuotes() {
+		headers.setETag("v2.6");
+		assertThat(headers.getETag()).isEqualTo("\"v2.6\"");
+	}
+
+	@Test
+	void weakETagWithoutLeadingQuote() {
+		headers.setETag("W/v2.6\"");
+		assertThat(headers.getETag()).isEqualTo("\"W/v2.6\"\"");
 	}
 
 	@Test
@@ -515,6 +521,20 @@ class HttpHeadersTests {
 
 		headers.setAcceptLanguageAsLocales(Collections.singletonList(Locale.FRANCE));
 		assertThat(headers.getAcceptLanguageAsLocales()).first().isEqualTo(Locale.FRANCE);
+	}
+
+	@Test // gh-32259
+	void acceptLanguageTrailingSemicolon() {
+		String headerValue = "en-us,en;,nl;";
+		headers.set(HttpHeaders.ACCEPT_LANGUAGE, headerValue);
+		assertThat(headers.getFirst(HttpHeaders.ACCEPT_LANGUAGE)).isEqualTo(headerValue);
+
+		List<Locale.LanguageRange> expectedRanges = Arrays.asList(
+				new Locale.LanguageRange("en-us"),
+				new Locale.LanguageRange("en"),
+				new Locale.LanguageRange("nl")
+		);
+		assertThat(headers.getAcceptLanguage()).isEqualTo(expectedRanges);
 	}
 
 	@Test // SPR-15603

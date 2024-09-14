@@ -34,6 +34,7 @@ import java.net.URLClassLoader;
 import java.net.URLConnection;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
+import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
@@ -445,12 +446,18 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 			if (!cleanedPath.equals(urlString)) {
 				// Prefer cleaned URL, aligned with UrlResource#createRelative(String)
 				try {
-					return new UrlResource(ResourceUtils.toURI(cleanedPath));
+					// Cannot test for URLStreamHandler directly: URL equality for same String
+					// in order to find out whether original URL uses default URLStreamHandler.
+					if (ResourceUtils.toURL(urlString).equals(url)) {
+						// Plain URL with default URLStreamHandler -> replace with cleaned path.
+						return new UrlResource(ResourceUtils.toURI(cleanedPath));
+					}
 				}
 				catch (URISyntaxException | MalformedURLException ex) {
 					// Fallback to regular URL construction below...
 				}
 			}
+			// Retain original URL instance, potentially including custom URLStreamHandler.
 			return new UrlResource(url);
 		}
 	}
@@ -973,7 +980,7 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 					.formatted(rootPath.toAbsolutePath(), subPattern));
 		}
 
-		try (Stream<Path> files = Files.walk(rootPath)) {
+		try (Stream<Path> files = Files.walk(rootPath, FileVisitOption.FOLLOW_LINKS)) {
 			files.filter(isMatchingFile).sorted().map(FileSystemResource::new).forEach(result::add);
 		}
 		catch (Exception ex) {

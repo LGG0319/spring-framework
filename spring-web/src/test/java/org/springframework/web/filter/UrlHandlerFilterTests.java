@@ -40,16 +40,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class UrlHandlerFilterTests {
 
 	@Test
-	void trimTrailingSlashAndHandle() throws Exception {
-		testTrimTrailingSlashAndHandle("/path/**", "/path/123", null);
-		testTrimTrailingSlashAndHandle("/path/*", "/path", "/123");
-		testTrimTrailingSlashAndHandle("/path/*", "", "/path/123");
+	void requestWrapping() throws Exception {
+		testRequestWrapping("/path/**", "/path/123", null);
+		testRequestWrapping("/path/*", "/path", "/123");
+		testRequestWrapping("/path/*", "", "/path/123");
 	}
 
-	void testTrimTrailingSlashAndHandle(
-			String pattern, String servletPath, @Nullable String pathInfo) throws Exception {
+	void testRequestWrapping(String pattern, String servletPath, @Nullable String pathInfo) throws Exception {
 
-		UrlHandlerFilter filter = UrlHandlerFilter.trimTrailingSlash(pattern).andHandleRequest().build();
+		UrlHandlerFilter filter = UrlHandlerFilter.trailingSlashHandler(pattern).wrapRequest().build();
 
 		boolean hasPathInfo = StringUtils.hasLength(pathInfo);
 		String requestURI = servletPath + (hasPathInfo ? pathInfo : "");
@@ -70,28 +69,9 @@ public class UrlHandlerFilterTests {
 	}
 
 	@Test
-	void noTrailingSlashNoHandling() throws Exception {
-		testNoTrailingSlashNoHandling("/path/**", "/path/123");
-		testNoTrailingSlashNoHandling("/path/*", "/path/123");
-	}
-
-	private static void testNoTrailingSlashNoHandling(
-			String pattern, String requestURI) throws ServletException, IOException {
-
-		UrlHandlerFilter filter = UrlHandlerFilter.trimTrailingSlash(pattern).andHandleRequest().build();
-
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", requestURI);
-		MockFilterChain chain = new MockFilterChain();
-		filter.doFilterInternal(request, new MockHttpServletResponse(), chain);
-
-		HttpServletRequest actual = (HttpServletRequest) chain.getRequest();
-		assertThat(actual).as("Request should not be wrapped").isSameAs(request);
-	}
-
-	@Test
-	void trimTrailingSlashAndRedirect() throws Exception {
+	void redirect() throws Exception {
 		HttpStatus status = HttpStatus.PERMANENT_REDIRECT;
-		UrlHandlerFilter filter = UrlHandlerFilter.trimTrailingSlash("/path/*").andRedirect(status).build();
+		UrlHandlerFilter filter = UrlHandlerFilter.trailingSlashHandler("/path/*").redirect(status).build();
 
 		String path = "/path/123";
 		MockHttpServletResponse response = new MockHttpServletResponse();
@@ -106,14 +86,32 @@ public class UrlHandlerFilterTests {
 	}
 
 	@Test
-	void noTrailingSlashNoRedirect() throws Exception {
-		HttpStatus status = HttpStatus.PERMANENT_REDIRECT;
-		UrlHandlerFilter filter = UrlHandlerFilter.trimTrailingSlash("/path/*").andRedirect(status).build();
+	void noUrlHandling() throws Exception {
+		testNoUrlHandling("/path/**", "/path/123");
+		testNoUrlHandling("/path/*", "/path/123");
+		testNoUrlHandling("/**", "/"); // gh-33444
+	}
 
-		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/path/123");
+	private static void testNoUrlHandling(String pattern, String requestURI) throws ServletException, IOException {
+
+		// No request wrapping
+		UrlHandlerFilter filter = UrlHandlerFilter.trailingSlashHandler(pattern).wrapRequest().build();
+
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", requestURI);
+		MockFilterChain chain = new MockFilterChain();
+		filter.doFilterInternal(request, new MockHttpServletResponse(), chain);
+
+		HttpServletRequest actual = (HttpServletRequest) chain.getRequest();
+		assertThat(actual).as("Request should not be wrapped").isSameAs(request);
+
+		// No redirect
+		HttpStatus status = HttpStatus.PERMANENT_REDIRECT;
+		filter = UrlHandlerFilter.trailingSlashHandler(pattern).redirect(status).build();
+
+		request = new MockHttpServletRequest("GET", requestURI);
 		MockHttpServletResponse response = new MockHttpServletResponse();
 
-		MockFilterChain chain = new MockFilterChain();
+		chain = new MockFilterChain();
 		filter.doFilterInternal(request, response, chain);
 
 		assertThat(chain.getRequest()).isSameAs(request);

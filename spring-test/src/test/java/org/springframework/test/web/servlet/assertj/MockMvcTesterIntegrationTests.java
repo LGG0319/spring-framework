@@ -16,7 +16,13 @@
 
 package org.springframework.test.web.servlet.assertj;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -28,8 +34,12 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Part;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
+import org.assertj.core.api.InstanceOfAssertFactories;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -39,31 +49,44 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.mock.web.MockPart;
 import org.springframework.stereotype.Controller;
 import org.springframework.test.context.junit.jupiter.web.SpringJUnitWebConfig;
 import org.springframework.test.web.Person;
 import org.springframework.test.web.servlet.ResultMatcher;
+import org.springframework.test.web.servlet.assertj.MockMvcTester.MockMultipartMvcRequestBuilder;
+import org.springframework.test.web.servlet.assertj.MockMvcTester.MockMvcRequestBuilder;
 import org.springframework.ui.Model;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.SessionAttributes;
 import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.DispatcherServlet;
 import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.assertj.core.api.InstanceOfAssertFactories.map;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * Integration tests for {@link MockMvcTester}.
@@ -74,6 +97,10 @@ import static org.mockito.Mockito.verify;
 @SpringJUnitWebConfig
 public class MockMvcTesterIntegrationTests {
 
+	private static final MockMultipartFile file = new MockMultipartFile("file", "content.txt", null,
+			"value".getBytes(StandardCharsets.UTF_8));
+
+
 	private final MockMvcTester mvc;
 
 	MockMvcTesterIntegrationTests(WebApplicationContext wac) {
@@ -81,17 +108,107 @@ public class MockMvcTesterIntegrationTests {
 	}
 
 	@Nested
+	class PerformTests {
+
+		@Test
+		void syncRequestWithDefaultExchange() {
+			assertThat(mvc.get().uri("/greet")).hasStatusOk();
+		}
+
+		@Test
+		void asyncRequestWithDefaultExchange() {
+			assertThat(mvc.get().uri("/streaming").param("timeToWait", "100")).hasStatusOk()
+					.hasBodyTextEqualTo("name=Joe&someBoolean=true");
+		}
+
+		@Test
+		void asyncMultipartRequestWithDefaultExchange() {
+			assertThat(mvc.post().uri("/multipart-streaming").multipart()
+					.file(file).param("timeToWait", "100"))
+					.hasStatusOk().hasBodyTextEqualTo("name=Joe&file=content.txt");
+		}
+
+		@Test
+		void syncRequestWithExplicitExchange() {
+			assertThat(mvc.get().uri("/greet").exchange()).hasStatusOk();
+		}
+
+		@Test
+		void asyncRequestWithExplicitExchange() {
+			assertThat(mvc.get().uri("/streaming").param("timeToWait", "100").exchange())
+					.hasStatusOk().hasBodyTextEqualTo("name=Joe&someBoolean=true");
+		}
+
+		@Test
+		void asyncMultipartRequestWitExplicitExchange() {
+			assertThat(mvc.post().uri("/multipart-streaming").multipart()
+					.file(file).param("timeToWait", "100").exchange())
+					.hasStatusOk().hasBodyTextEqualTo("name=Joe&file=content.txt");
+		}
+
+		@Test
+		void syncRequestWithExplicitExchangeIgnoresDuration() {
+			Duration timeToWait = mock(Duration.class);
+			assertThat(mvc.get().uri("/greet").exchange(timeToWait)).hasStatusOk();
+			verifyNoInteractions(timeToWait);
+		}
+
+		@Test
+		void asyncRequestWithExplicitExchangeAndEnoughTimeToWait() {
+			assertThat(mvc.get().uri("/streaming").param("timeToWait", "100").exchange(Duration.ofMillis(200)))
+					.hasStatusOk().hasBodyTextEqualTo("name=Joe&someBoolean=true");
+		}
+
+		@Test
+		void asyncMultipartRequestWithExplicitExchangeAndEnoughTimeToWait() {
+			assertThat(mvc.post().uri("/multipart-streaming").multipart()
+					.file(file).param("timeToWait", "100").exchange(Duration.ofMillis(200)))
+					.hasStatusOk().hasBodyTextEqualTo("name=Joe&file=content.txt");
+		}
+
+		@Test
+		void asyncRequestWithExplicitExchangeAndNotEnoughTimeToWait() {
+			MockMvcRequestBuilder builder = mvc.get().uri("/streaming").param("timeToWait", "500");
+			assertThatIllegalStateException()
+					.isThrownBy(() -> builder.exchange(Duration.ofMillis(100)))
+					.withMessageContaining("was not set during the specified timeToWait=100");
+		}
+
+		@Test
+		void asyncMultipartRequestWithExplicitExchangeAndNotEnoughTimeToWait() {
+			MockMultipartMvcRequestBuilder builder = mvc.post().uri("/multipart-streaming").multipart()
+					.file(file).param("timeToWait", "500");
+			assertThatIllegalStateException()
+					.isThrownBy(() -> builder.exchange(Duration.ofMillis(100)))
+					.withMessageContaining("was not set during the specified timeToWait=100");
+		}
+	}
+
+	@Nested
 	class RequestTests {
 
 		@Test
 		void hasAsyncStartedTrue() {
-			assertThat(mvc.get().uri("/callable").accept(MediaType.APPLICATION_JSON))
+			assertThat(mvc.get().uri("/callable").accept(MediaType.APPLICATION_JSON).asyncExchange())
+					.request().hasAsyncStarted(true);
+		}
+
+		@Test
+		void hasAsyncStartedForMultipartTrue() {
+			assertThat(mvc.post().uri("/multipart-streaming").multipart()
+					.file(file).param("timeToWait", "100").asyncExchange())
 					.request().hasAsyncStarted(true);
 		}
 
 		@Test
 		void hasAsyncStartedFalse() {
-			assertThat(mvc.get().uri("/greet")).request().hasAsyncStarted(false);
+			assertThat(mvc.get().uri("/greet").asyncExchange()).request().hasAsyncStarted(false);
+		}
+
+		@Test
+		void hasAsyncStartedForMultipartFalse() {
+			assertThat(mvc.put().uri("/multipart-put").multipart().file(file).asyncExchange())
+					.request().hasAsyncStarted(false);
 		}
 
 		@Test
@@ -104,6 +221,47 @@ public class MockMvcTesterIntegrationTests {
 		void sessionAttributes() {
 			assertThat(mvc.get().uri("/locale")).request().sessionAttributes()
 					.containsOnly(entry("locale", Locale.UK));
+		}
+	}
+
+	@Nested
+	class MultipartTests {
+
+		private final MockMultipartFile JSON_PART_FILE = new MockMultipartFile("json", "json", "application/json", """
+				{
+					"name": "test"
+				}""".getBytes(StandardCharsets.UTF_8));
+
+		@Test
+		void multipartSetsContentType() {
+			assertThat(mvc.put().uri("/multipart-put").multipart().file(file).file(JSON_PART_FILE))
+					.request().satisfies(request -> assertThat(request.getContentType())
+							.isEqualTo(MediaType.MULTIPART_FORM_DATA_VALUE));
+		}
+
+		@Test
+		void multipartWithPut() {
+			assertThat(mvc.put().uri("/multipart-put").multipart().file(file).file(JSON_PART_FILE))
+					.hasStatusOk()
+					.hasViewName("index")
+					.model().contains(entry("name", "file"));
+		}
+
+		@Test
+		void multipartWithMissingPart() {
+			assertThat(mvc.put().uri("/multipart-put").multipart().file(JSON_PART_FILE))
+					.hasStatus(HttpStatus.BAD_REQUEST)
+					.failure().isInstanceOfSatisfying(MissingServletRequestPartException.class,
+							ex -> assertThat(ex.getRequestPartName()).isEqualTo("file"));
+		}
+
+		@Test
+		void multipartWithNamedPart() {
+			MockPart part = new MockPart("part", "content.txt", "value".getBytes(StandardCharsets.UTF_8));
+			assertThat(mvc.post().uri("/part").multipart().part(part).file(JSON_PART_FILE))
+					.hasStatusOk()
+					.hasViewName("index")
+					.model().contains(entry("part", "content.txt"), entry("name", "test"));
 		}
 	}
 
@@ -220,8 +378,9 @@ public class MockMvcTesterIntegrationTests {
 
 		@Test
 		void asyncResult() {
-			assertThat(mvc.get().uri("/callable").accept(MediaType.APPLICATION_JSON))
-					.asyncResult().asInstanceOf(map(String.class, Object.class))
+			MvcTestResult result = mvc.get().uri("/callable").accept(MediaType.APPLICATION_JSON).asyncExchange();
+			assertThat(result.getMvcResult().getAsyncResult())
+					.asInstanceOf(InstanceOfAssertFactories.map(String.class, Object.class))
 					.containsOnly(entry("key", "value"));
 		}
 
@@ -275,43 +434,109 @@ public class MockMvcTesterIntegrationTests {
 	}
 
 	@Nested
+	class DebugTests {
+
+		private final PrintStream standardOut = System.out;
+
+		private final ByteArrayOutputStream capturedOut = new ByteArrayOutputStream();
+
+		@BeforeEach
+		public void setUp() {
+			System.setOut(new PrintStream(capturedOut));
+		}
+
+		@AfterEach
+		public void tearDown() {
+			System.setOut(standardOut);
+		}
+
+		@Test
+		void debugUsesSystemOutByDefault() {
+			assertThat(mvc.get().uri("/greet")).debug().hasStatusOk();
+			assertThat(capturedOut()).contains("MockHttpServletRequest:", "MockHttpServletResponse:");
+		}
+
+		@Test
+		void debugCanPrintToCustomOutputStream() {
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			assertThat(mvc.get().uri("/greet")).debug(out).hasStatusOk();
+			assertThat(out.toString(StandardCharsets.UTF_8))
+					.contains("MockHttpServletRequest:", "MockHttpServletResponse:");
+			assertThat(capturedOut()).isEmpty();
+		}
+
+		@Test
+		void debugCanPrintToCustomWriter() {
+			StringWriter out = new StringWriter();
+			assertThat(mvc.get().uri("/greet")).debug(out).hasStatusOk();
+			assertThat(out.toString())
+					.contains("MockHttpServletRequest:", "MockHttpServletResponse:");
+			assertThat(capturedOut()).isEmpty();
+		}
+
+		private String capturedOut() {
+			return this.capturedOut.toString(StandardCharsets.UTF_8);
+		}
+
+	}
+
+	@Nested
 	class ExceptionTests {
 
 		@Test
-		void doesNotHaveUnresolvedException() {
-			assertThat(mvc.get().uri("/greet")).doesNotHaveUnresolvedException();
+		void hasFailedWithUnresolvedException() {
+			assertThat(mvc.get().uri("/error/1")).hasFailed();
 		}
 
 		@Test
-		void hasUnresolvedException() {
-			assertThat(mvc.get().uri("/error/1")).hasUnresolvedException();
+		void hasFailedWithResolvedException() {
+			assertThat(mvc.get().uri("/error/2")).hasFailed().hasStatus(HttpStatus.PAYMENT_REQUIRED);
 		}
 
 		@Test
-		void doesNotHaveUnresolvedExceptionWithUnresolvedException() {
+		void doesNotHaveFailedWithoutException() {
+			assertThat(mvc.get().uri("/greet")).doesNotHaveFailed();
+		}
+
+		@Test
+		void doesNotHaveFailedWithUnresolvedException() {
 			assertThatExceptionOfType(AssertionError.class)
-					.isThrownBy(() -> assertThat(mvc.get().uri("/error/1")).doesNotHaveUnresolvedException())
+					.isThrownBy(() -> assertThat(mvc.get().uri("/error/1")).doesNotHaveFailed())
 					.withMessage("Expected request to succeed, but it failed");
 		}
 
 		@Test
-		void hasUnresolvedExceptionWithoutUnresolvedException() {
+		void doesNotHaveFailedWithResolvedException() {
 			assertThatExceptionOfType(AssertionError.class)
-					.isThrownBy(() -> assertThat(mvc.get().uri("/greet")).hasUnresolvedException())
+					.isThrownBy(() -> assertThat(mvc.get().uri("/error/2")).doesNotHaveFailed())
+					.withMessage("Expected request to succeed, but it failed");
+		}
+
+		@Test
+		void hasFailedWithoutException() {
+			assertThatExceptionOfType(AssertionError.class)
+					.isThrownBy(() -> assertThat(mvc.get().uri("/greet")).hasFailed())
 					.withMessage("Expected request to fail, but it succeeded");
 		}
 
 		@Test
-		void unresolvedExceptionWithFailedRequest() {
-			assertThat(mvc.get().uri("/error/1")).unresolvedException()
+		void failureWithUnresolvedException() {
+			assertThat(mvc.get().uri("/error/1")).failure()
 					.isInstanceOf(ServletException.class)
 					.cause().isInstanceOf(IllegalStateException.class).hasMessage("Expected");
 		}
 
 		@Test
-		void unresolvedExceptionWithSuccessfulRequest() {
+		void failureWithResolvedException() {
+			assertThat(mvc.get().uri("/error/2")).failure()
+					.isInstanceOfSatisfying(ResponseStatusException.class, ex ->
+							assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.PAYMENT_REQUIRED));
+		}
+
+		@Test
+		void failureWithoutException() {
 			assertThatExceptionOfType(AssertionError.class)
-					.isThrownBy(() -> assertThat(mvc.get().uri("/greet")).unresolvedException())
+					.isThrownBy(() -> assertThat(mvc.get().uri("/greet")).failure())
 					.withMessage("Expected request to fail, but it succeeded");
 		}
 
@@ -321,12 +546,6 @@ public class MockMvcTesterIntegrationTests {
 		void assertAndApplyWithUnresolvedException() {
 			testAssertionFailureWithUnresolvableException(
 					result -> assertThat(result).apply(mvcResult -> {}));
-		}
-
-		@Test
-		void assertAsyncResultWithUnresolvedException() {
-			testAssertionFailureWithUnresolvableException(
-					result -> assertThat(result).asyncResult());
 		}
 
 		@Test
@@ -453,7 +672,7 @@ public class MockMvcTesterIntegrationTests {
 	@Configuration
 	@EnableWebMvc
 	@Import({ TestController.class, PersonController.class, AsyncController.class,
-			SessionController.class, ErrorController.class })
+			MultipartController.class, SessionController.class, ErrorController.class })
 	static class WebConfiguration {
 	}
 
@@ -499,6 +718,52 @@ public class MockMvcTesterIntegrationTests {
 		public Callable<Map<String, String>> getCallable() {
 			return () -> Collections.singletonMap("key", "value");
 		}
+
+		@GetMapping("/streaming")
+		StreamingResponseBody streaming(@RequestParam long timeToWait) {
+			return out -> {
+				PrintStream stream = new PrintStream(out, true, StandardCharsets.UTF_8);
+				stream.print("name=Joe");
+				try {
+					Thread.sleep(timeToWait);
+					stream.print("&someBoolean=true");
+				}
+				catch (InterruptedException e) {
+					/* no-op */
+				}
+			};
+		}
+	}
+
+	@Controller
+	static class MultipartController {
+
+		@PostMapping("/part")
+		ModelAndView part(@RequestPart Part part, @RequestPart Map<String, String> json) {
+			Map<String, Object> model = new HashMap<>(json);
+			model.put(part.getName(), part.getSubmittedFileName());
+			return new ModelAndView("index", model);
+		}
+
+		@PutMapping("/multipart-put")
+		ModelAndView multiPartViaHttpPut(@RequestParam MultipartFile file) {
+			return new ModelAndView("index", Map.of("name", file.getName()));
+		}
+
+		@PostMapping("/multipart-streaming")
+		StreamingResponseBody streaming(@RequestParam MultipartFile file, @RequestParam long timeToWait) {
+			return out -> {
+				PrintStream stream = new PrintStream(out, true, StandardCharsets.UTF_8);
+				stream.print("name=Joe");
+				try {
+					Thread.sleep(timeToWait);
+					stream.print("&file=" + file.getOriginalFilename());
+				}
+				catch (InterruptedException e) {
+					/* no-op */
+				}
+			};
+		}
 	}
 
 	@Controller
@@ -522,6 +787,11 @@ public class MockMvcTesterIntegrationTests {
 		@GetMapping("/error/1")
 		public String one() {
 			throw new IllegalStateException("Expected");
+		}
+
+		@GetMapping("/error/2")
+		public String two() {
+			throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED);
 		}
 
 		@GetMapping("/error/validation/{id}")

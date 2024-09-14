@@ -88,7 +88,7 @@ The code snippets below show using the `HttpHandler` adapters with each server A
 ======
 Java::
 +
-[source,java,indent=0,subs="verbatim,quotes",role="primary"]
+[source,java,indent=0,subs="verbatim,quotes"]
 ----
 	HttpHandler handler = ...
 	ReactorHttpHandlerAdapter adapter = new ReactorHttpHandlerAdapter(handler);
@@ -97,7 +97,7 @@ Java::
 
 Kotlin::
 +
-[source,kotlin,indent=0,subs="verbatim,quotes",role="secondary"]
+[source,kotlin,indent=0,subs="verbatim,quotes"]
 ----
 	val handler: HttpHandler = ...
 	val adapter = ReactorHttpHandlerAdapter(handler)
@@ -110,7 +110,7 @@ Kotlin::
 ======
 Java::
 +
-[source,java,indent=0,subs="verbatim,quotes",role="primary"]
+[source,java,indent=0,subs="verbatim,quotes"]
 ----
 	HttpHandler handler = ...
 	UndertowHttpHandlerAdapter adapter = new UndertowHttpHandlerAdapter(handler);
@@ -120,7 +120,7 @@ Java::
 
 Kotlin::
 +
-[source,kotlin,indent=0,subs="verbatim,quotes",role="secondary"]
+[source,kotlin,indent=0,subs="verbatim,quotes"]
 ----
 	val handler: HttpHandler = ...
 	val adapter = UndertowHttpHandlerAdapter(handler)
@@ -134,7 +134,7 @@ Kotlin::
 ======
 Java::
 +
-[source,java,indent=0,subs="verbatim,quotes",role="primary"]
+[source,java,indent=0,subs="verbatim,quotes"]
 ----
 	HttpHandler handler = ...
 	Servlet servlet = new TomcatHttpHandlerAdapter(handler);
@@ -151,7 +151,7 @@ Java::
 
 Kotlin::
 +
-[source,kotlin,indent=0,subs="verbatim,quotes",role="secondary"]
+[source,kotlin,indent=0,subs="verbatim,quotes"]
 ----
 	val handler: HttpHandler = ...
 	val servlet = TomcatHttpHandlerAdapter(handler)
@@ -173,7 +173,7 @@ Kotlin::
 ======
 Java::
 +
-[source,java,indent=0,subs="verbatim,quotes",role="primary"]
+[source,java,indent=0,subs="verbatim,quotes"]
 ----
 	HttpHandler handler = ...
 	Servlet servlet = new JettyHttpHandlerAdapter(handler);
@@ -192,7 +192,7 @@ Java::
 
 Kotlin::
 +
-[source,kotlin,indent=0,subs="verbatim,quotes",role="secondary"]
+[source,kotlin,indent=0,subs="verbatim,quotes"]
 ----
 	val handler: HttpHandler = ...
 	val servlet = JettyHttpHandlerAdapter(handler)
@@ -305,14 +305,14 @@ Spring ApplicationContext, or that can be registered directly with it:
 ======
 Java::
 +
-[source,java,indent=0,subs="verbatim,quotes",role="primary"]
+[source,java,indent=0,subs="verbatim,quotes"]
 ----
 	Mono<MultiValueMap<String, String>> getFormData();
 ----
 
 Kotlin::
 +
-[source,Kotlin,indent=0,subs="verbatim,quotes",role="secondary"]
+[source,Kotlin,indent=0,subs="verbatim,quotes"]
 ----
 	suspend fun getFormData(): MultiValueMap<String, String>
 ----
@@ -334,14 +334,14 @@ The `DefaultServerWebExchange` uses the configured `HttpMessageReader` to parse 
 ======
 Java::
 +
-[source,java,indent=0,subs="verbatim,quotes",role="primary"]
+[source,java,indent=0,subs="verbatim,quotes"]
 ----
 	Mono<MultiValueMap<String, Part>> getMultipartData();
 ----
 
 Kotlin::
 +
-[source,Kotlin,indent=0,subs="verbatim,quotes",role="secondary"]
+[source,Kotlin,indent=0,subs="verbatim,quotes"]
 ----
 	suspend fun getMultipartData(): MultiValueMap<String, Part>
 ----
@@ -453,7 +453,7 @@ The following table describes the available `WebExceptionHandler` implementation
 
 [[webflux-codecs]]
 == Codecs
-[.small]#xref:integration/rest-clients.adoc#rest-message-conversion[See equivalent in the Servlet stack]#
+[.small]#xref:web/webmvc/message-converters.adoc#message-converters[See equivalent in the Servlet stack]#
 
 The `spring-web` and `spring-core` modules provide support for serializing and
 deserializing byte content to and from higher level objects through non-blocking I/O with
@@ -562,6 +562,18 @@ for repeated, map-like access to parts, or otherwise rely on the
 `SynchronossPartHttpMessageReader` for a one-time access to `Flux<Part>`.
 
 
+[[webflux-codecs-protobuf]]
+=== Protocol Buffers
+
+`ProtobufEncoder` and `ProtobufDecoder` supporting decoding and encoding "application/x-protobuf", "application/octet-stream"
+and "application/vnd.google.protobuf" content for `com.google.protobuf.Message` types. They also support stream of values
+if content is received/sent with the "delimited" parameter along the content type (like "application/x-protobuf;delimited=true").
+This requires the "com.google.protobuf:protobuf-java" library, version 3.29 and higher.
+
+The `ProtobufJsonDecoder` and `ProtobufJsonEncoder` variants support reading and writing JSON documents to and from Protobuf messages.
+They require the "com.google.protobuf:protobuf-java-util" dependency. Note, the JSON variants do not support reading stream of messages,
+see the {spring-framework-api}/http/codec/protobuf/ProtobufJsonDecoder.html[javadoc of `ProtobufJsonDecoder`] for more details.
+
 [[webflux-codecs-limits]]
 === Limits
 
@@ -664,7 +676,7 @@ The following example shows how to do so for server-side requests:
 ======
 Java::
 +
-[source,java,indent=0,subs="verbatim,quotes",role="primary"]
+[source,java,indent=0,subs="verbatim,quotes"]
 ----
 	@Configuration
 	@EnableWebFlux
@@ -679,7 +691,7 @@ Java::
 
 Kotlin::
 +
-[source,kotlin,indent=0,subs="verbatim,quotes",role="secondary"]
+[source,kotlin,indent=0,subs="verbatim,quotes"]
 ----
 	@Configuration
 	@EnableWebFlux
@@ -698,7 +710,7 @@ The following example shows how to do so for client-side requests:
 ======
 Java::
 +
-[source,java,indent=0,subs="verbatim,quotes",role="primary"]
+[source,java,indent=0,subs="verbatim,quotes"]
 ----
 	Consumer<ClientCodecConfigurer> consumer = configurer ->
 			configurer.defaultCodecs().enableLoggingRequestDetails(true);
@@ -710,7 +722,7 @@ Java::
 
 Kotlin::
 +
-[source,kotlin,indent=0,subs="verbatim,quotes",role="secondary"]
+[source,kotlin,indent=0,subs="verbatim,quotes"]
 ----
 	val consumer: (ClientCodecConfigurer) -> Unit  = { configurer -> configurer.defaultCodecs().enableLoggingRequestDetails(true) }
 
@@ -748,7 +760,7 @@ The following example shows how to do so for client-side requests:
 ======
 Java::
 +
-[source,java,indent=0,subs="verbatim,quotes",role="primary"]
+[source,java,indent=0,subs="verbatim,quotes"]
 ----
 	WebClient webClient = WebClient.builder()
 			.codecs(configurer -> {
@@ -760,7 +772,7 @@ Java::
 
 Kotlin::
 +
-[source,kotlin,indent=0,subs="verbatim,quotes",role="secondary"]
+[source,kotlin,indent=0,subs="verbatim,quotes"]
 ----
 	val webClient = WebClient.builder()
 			.codecs({ configurer ->

@@ -40,8 +40,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.function.BiConsumer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.springframework.lang.Nullable;
@@ -393,12 +391,6 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 	 */
 	public static final HttpHeaders EMPTY = new ReadOnlyHttpHeaders(new LinkedMultiValueMap<>());
 
-	/**
-	 * Pattern matching ETag multiple field values in headers such as "If-Match", "If-None-Match".
-	 * @see <a href="https://tools.ietf.org/html/rfc7232#section-2.3">Section 2.3 of RFC 7232</a>
-	 */
-	private static final Pattern ETAG_HEADER_VALUE_PATTERN = Pattern.compile("\\*|\\s*((W\\/)?(\"[^\"]*\"))\\s*,?");
-
 	private static final DecimalFormatSymbols DECIMAL_FORMAT_SYMBOLS = new DecimalFormatSymbols(Locale.ENGLISH);
 
 	private static final ZoneId GMT = ZoneId.of("GMT");
@@ -509,7 +501,20 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 	 */
 	public List<Locale.LanguageRange> getAcceptLanguage() {
 		String value = getFirst(ACCEPT_LANGUAGE);
-		return (StringUtils.hasText(value) ? Locale.LanguageRange.parse(value) : Collections.emptyList());
+		if (StringUtils.hasText(value)) {
+			try {
+				return Locale.LanguageRange.parse(value);
+			}
+			catch (IllegalArgumentException ignored) {
+				String[] tokens = StringUtils.tokenizeToStringArray(value, ",");
+				for (int i = 0; i < tokens.length; i++) {
+					tokens[i] = StringUtils.trimTrailingCharacter(tokens[i], ';');
+				}
+				value = StringUtils.arrayToCommaDelimitedString(tokens);
+				return Locale.LanguageRange.parse(value);
+			}
+		}
+		return Collections.emptyList();
 	}
 
 	/**
@@ -1058,12 +1063,9 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 	/**
 	 * Set the (new) entity tag of the body, as specified by the {@code ETag} header.
 	 */
-	public void setETag(@Nullable String etag) {
-		if (etag != null) {
-			Assert.isTrue(etag.startsWith("\"") || etag.startsWith("W/"),
-					"Invalid ETag: does not start with W/ or \"");
-			Assert.isTrue(etag.endsWith("\""), "Invalid ETag: does not end with \"");
-			set(ETAG, etag);
+	public void setETag(@Nullable String tag) {
+		if (tag != null) {
+			set(ETAG, ETag.quoteETagIfNecessary(tag));
 		}
 		else {
 			remove(ETAG);
@@ -1642,35 +1644,27 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 
 	/**
 	 * Retrieve a combined result from the field values of the ETag header.
-	 * @param headerName the header name
+	 * @param name the header name
 	 * @return the combined result
 	 * @throws IllegalArgumentException if parsing fails
 	 * @since 4.3
 	 */
-	protected List<String> getETagValuesAsList(String headerName) {
-		List<String> values = get(headerName);
-		if (values != null) {
-			List<String> result = new ArrayList<>();
-			for (String value : values) {
-				if (value != null) {
-					Matcher matcher = ETAG_HEADER_VALUE_PATTERN.matcher(value);
-					while (matcher.find()) {
-						if ("*".equals(matcher.group())) {
-							result.add(matcher.group());
-						}
-						else {
-							result.add(matcher.group(1));
-						}
-					}
-					if (result.isEmpty()) {
-						throw new IllegalArgumentException(
-								"Could not parse header '" + headerName + "' with value '" + value + "'");
-					}
+	protected List<String> getETagValuesAsList(String name) {
+		List<String> values = get(name);
+		if (values == null) {
+			return Collections.emptyList();
+		}
+		List<String> result = new ArrayList<>();
+		for (String value : values) {
+			if (value != null) {
+				List<ETag> tags = ETag.parse(value);
+				Assert.notEmpty(tags, "Could not parse header '" + name + "' with value '" + value + "'");
+				for (ETag tag : tags) {
+					result.add(tag.formattedTag());
 				}
 			}
-			return result;
 		}
-		return Collections.emptyList();
+		return result;
 	}
 
 	/**

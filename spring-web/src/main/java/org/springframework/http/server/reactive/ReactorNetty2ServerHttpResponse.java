@@ -78,6 +78,7 @@ class ReactorNetty2ServerHttpResponse extends AbstractServerHttpResponse impleme
 
 	@Override
 	@Deprecated
+	@SuppressWarnings("removal")
 	public Integer getRawStatusCode() {
 		Integer status = super.getRawStatusCode();
 		return (status != null ? status : this.response.status().code());
@@ -111,6 +112,7 @@ class ReactorNetty2ServerHttpResponse extends AbstractServerHttpResponse impleme
 			for (ResponseCookie httpCookie : getCookies().get(name)) {
 				Long maxAge = (!httpCookie.getMaxAge().isNegative()) ? httpCookie.getMaxAge().getSeconds() : null;
 				HttpSetCookie.SameSite sameSite = (httpCookie.getSameSite() != null) ? HttpSetCookie.SameSite.valueOf(httpCookie.getSameSite()) : null;
+				// TODO: support Partitioned attribute when available in Netty 5 API
 				DefaultHttpSetCookie cookie = new DefaultHttpSetCookie(name, httpCookie.getValue(), httpCookie.getPath(),
 						httpCookie.getDomain(), null, maxAge, sameSite, false, httpCookie.isSecure(), httpCookie.isHttpOnly());
 				this.response.addCookie(cookie);

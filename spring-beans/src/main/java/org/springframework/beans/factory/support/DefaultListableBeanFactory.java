@@ -129,16 +129,16 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		implements ConfigurableListableBeanFactory, BeanDefinitionRegistry, Serializable {
 
 	@Nullable
-	private static Class<?> javaxInjectProviderClass;
+	private static Class<?> jakartaInjectProviderClass;
 
 	static {
 		try {
-			javaxInjectProviderClass =
+			jakartaInjectProviderClass =
 					ClassUtils.forName("jakarta.inject.Provider", DefaultListableBeanFactory.class.getClassLoader());
 		}
 		catch (ClassNotFoundException ex) {
 			// JSR-330 API not available - Provider interface simply not supported then.
-			javaxInjectProviderClass = null;
+			jakartaInjectProviderClass = null;
 		}
 	}
 
@@ -198,6 +198,8 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
 	/** Whether bean definition metadata may be cached for all beans. */
 	private volatile boolean configurationFrozen;
+
+	private volatile boolean preInstantiationPhase;
 
 	private final NamedThreadLocal<PreInstantiation> preInstantiationThread =
 			new NamedThreadLocal<>("Pre-instantiation thread marker");
@@ -1004,8 +1006,9 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	}
 
 	@Override
-	protected boolean isCurrentThreadAllowedToHoldSingletonLock() {
-		return (this.preInstantiationThread.get() != PreInstantiation.BACKGROUND);
+	@Nullable
+	protected Boolean isCurrentThreadAllowedToHoldSingletonLock() {
+		return (this.preInstantiationPhase ? this.preInstantiationThread.get() != PreInstantiation.BACKGROUND : null);
 	}
 
 	//实例化所有剩余（非懒加载）单例对象
@@ -1023,6 +1026,8 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
 		// Trigger initialization of all non-lazy singleton beans...
 		List<CompletableFuture<?>> futures = new ArrayList<>();
+
+		this.preInstantiationPhase = true;
 		this.preInstantiationThread.set(PreInstantiation.MAIN);
 		try {
 			//2、遍历beanNames，触发所有非懒加载单例bean的初始化
@@ -1041,7 +1046,9 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		}
 		finally {
 			this.preInstantiationThread.remove();
+			this.preInstantiationPhase = false;
 		}
+
 		if (!futures.isEmpty()) {
 			try {
 				CompletableFuture.allOf(futures.toArray(new CompletableFuture<?>[0])).join();
@@ -1522,7 +1529,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 				ObjectProvider.class == descriptor.getDependencyType()) {
 			return new DependencyObjectProvider(descriptor, requestingBeanName);
 		}
-		else if (javaxInjectProviderClass == descriptor.getDependencyType()) {
+		else if (jakartaInjectProviderClass == descriptor.getDependencyType()) {
 			return new Jsr330Factory().createDependencyProvider(descriptor, requestingBeanName);
 		}
 		else if (descriptor.supportsLazyResolution()) {

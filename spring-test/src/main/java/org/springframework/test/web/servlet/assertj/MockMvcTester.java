@@ -17,24 +17,25 @@
 package org.springframework.test.web.servlet.assertj;
 
 import java.net.URI;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Map;
 import java.util.function.Function;
-import java.util.stream.StreamSupport;
 
+import jakarta.servlet.DispatcherType;
 import org.assertj.core.api.AssertProvider;
 
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.http.converter.GenericHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.lang.Nullable;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockMultipartHttpServletRequest;
+import org.springframework.test.http.HttpMessageContentConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.RequestBuilder;
 import org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.AbstractMockMultipartHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -57,8 +58,8 @@ import org.springframework.web.context.WebApplicationContext;
  *         builder -> builder.addFilters(filter).build());
  * </code></pre>
  *
- * <p>A tester can be created in standalone mode by providing the controller(s)
- * to include:<pre><code class="java">
+ * <p>A tester can be created in standalone mode by providing the controller
+ * instances to include:<pre><code class="java">
  * // Create an instance for PersonController
  * MockMvcTester mvc = MockMvcTester.of(new PersonController());
  * </code></pre>
@@ -70,13 +71,23 @@ import org.springframework.web.context.WebApplicationContext;
  * assertThat(mvc.get().uri("/hi")).hasStatusOk().hasBodyTextEqualTo("Hello");
  * </code></pre>
  *
- *<p>For more complex scenarios the {@linkplain MvcTestResult result} of the
+ * <p>For more complex scenarios the {@linkplain MvcTestResult result} of the
  * exchange can be assigned in a variable to run multiple assertions:
  * <pre><code class="java">
  * // perform a POST on /save and assert the response body is empty
  * MvcTestResult result = mvc.post().uri("/save").exchange();
  * assertThat(result).hasStatus(HttpStatus.CREATED);
  * assertThat(result).body().isEmpty();
+ * </code></pre>
+ *
+ * <p>If the request is processing asynchronously, {@code exchange} waits for
+ * its completion, either using the
+ * {@linkplain org.springframework.mock.web.MockAsyncContext#setTimeout default
+ * timeout} or a given one. If you prefer to get the result of an
+ * asynchronous request immediately, use {@code asyncExchange}:
+ * <pre><code class="java">
+ * // perform a POST on /save and assert an asynchronous request has started
+ * assertThat(mvc.post().uri("/save").asyncExchange()).request().hasAsyncStarted();
  * </code></pre>
  *
  * <p>You can also perform requests using the static builders approach that
@@ -86,15 +97,27 @@ import org.springframework.web.context.WebApplicationContext;
  *         .hasStatusOk().hasBodyTextEqualTo("Hello");
  * </code></pre>
  *
+ * <p>Use this approach if you have a custom {@link RequestBuilder} implementation
+ * that you'd like to integrate here. This approach is also invoking {@link MockMvc}
+ * without any additional processing of asynchronous requests.
+ *
  * <p>One main difference between {@link MockMvc} and {@code MockMvcTester} is
  * that an unresolved exception is not thrown directly when using
  * {@code MockMvcTester}. Rather an {@link MvcTestResult} is available with an
- * {@linkplain MvcTestResult#getUnresolvedException() unresolved exception}
- * which allows you to assert that a request failed unexpectedly:
+ * {@linkplain MvcTestResult#getUnresolvedException() unresolved exception}.
+ * Both resolved and unresolved exceptions are considered a failure that can
+ * be asserted as follows:
  * <pre><code class="java">
- * // perform a GET on /boom and assert the message for the the unresolved exception
- * assertThat(mvc.get().uri("/boom")).hasUnresolvedException())
- *         .withMessage("Test exception");
+ * // perform a GET on /boom and assert the message for the exception
+ * assertThat(mvc.get().uri("/boom")).hasFailed()
+ *         .failure().hasMessage("Test exception");
+ * </code></pre>
+ *
+ * <p>Any attempt to access the result with an unresolved exception will
+ * throw an {@link AssertionError}:
+ * <pre><code class="java">
+ * // throw an AssertionError with an unresolved exception
+ * assertThat(mvc.get().uri("/boom")).hasStatus5xxServerError();
  * </code></pre>
  *
  * <p>{@code MockMvcTester} can be configured with a list of
@@ -107,18 +130,16 @@ import org.springframework.web.context.WebApplicationContext;
  */
 public final class MockMvcTester {
 
-	private static final MediaType JSON = MediaType.APPLICATION_JSON;
-
 	private final MockMvc mockMvc;
 
 	@Nullable
-	private final GenericHttpMessageConverter<Object> jsonMessageConverter;
+	private final HttpMessageContentConverter contentConverter;
 
 
-	private MockMvcTester(MockMvc mockMvc, @Nullable GenericHttpMessageConverter<Object> jsonMessageConverter) {
+	private MockMvcTester(MockMvc mockMvc, @Nullable HttpMessageContentConverter contentConverter) {
 		Assert.notNull(mockMvc, "mockMVC should not be null");
 		this.mockMvc = mockMvc;
-		this.jsonMessageConverter = jsonMessageConverter;
+		this.contentConverter = contentConverter;
 	}
 
 	/**
@@ -212,15 +233,17 @@ public final class MockMvcTester {
 	 * @return a new instance using the specified converters
 	 */
 	public MockMvcTester withHttpMessageConverters(Iterable<HttpMessageConverter<?>> httpMessageConverters) {
-		return new MockMvcTester(this.mockMvc, findJsonMessageConverter(httpMessageConverters));
+		return new MockMvcTester(this.mockMvc, HttpMessageContentConverter.of(httpMessageConverters));
 	}
 
 	/**
 	 * Prepare an HTTP GET request.
 	 * <p>The returned builder can be wrapped in {@code assertThat} to enable
 	 * assertions on the result. For multi-statements assertions, use
-	 * {@linkplain MockMvcRequestBuilder#exchange() exchange} to assign the
-	 * result.
+	 * {@link MockMvcRequestBuilder#exchange() exchange()} to assign the
+	 * result. To control the time to wait for asynchronous request to complete
+	 * on a per-request basis, use
+	 * {@link MockMvcRequestBuilder#exchange(Duration) exchange(Duration)}.
 	 * @return a request builder for specifying the target URI
 	 */
 	public MockMvcRequestBuilder get() {
@@ -231,8 +254,10 @@ public final class MockMvcTester {
 	 * Prepare an HTTP HEAD request.
 	 * <p>The returned builder can be wrapped in {@code assertThat} to enable
 	 * assertions on the result. For multi-statements assertions, use
-	 * {@linkplain MockMvcRequestBuilder#exchange() exchange} to assign the
-	 * result.
+	 * {@link MockMvcRequestBuilder#exchange() exchange()} to assign the
+	 * result. To control the time to wait for asynchronous request to complete
+	 * on a per-request basis, use
+	 * {@link MockMvcRequestBuilder#exchange(Duration) exchange(Duration)}.
 	 * @return a request builder for specifying the target URI
 	 */
 	public MockMvcRequestBuilder head() {
@@ -243,8 +268,10 @@ public final class MockMvcTester {
 	 * Prepare an HTTP POST request.
 	 * <p>The returned builder can be wrapped in {@code assertThat} to enable
 	 * assertions on the result. For multi-statements assertions, use
-	 * {@linkplain MockMvcRequestBuilder#exchange() exchange} to assign the
-	 * result.
+	 * {@link MockMvcRequestBuilder#exchange() exchange()} to assign the
+	 * result. To control the time to wait for asynchronous request to complete
+	 * on a per-request basis, use
+	 * {@link MockMvcRequestBuilder#exchange(Duration) exchange(Duration)}.
 	 * @return a request builder for specifying the target URI
 	 */
 	public MockMvcRequestBuilder post() {
@@ -255,8 +282,10 @@ public final class MockMvcTester {
 	 * Prepare an HTTP PUT request.
 	 * <p>The returned builder can be wrapped in {@code assertThat} to enable
 	 * assertions on the result. For multi-statements assertions, use
-	 * {@linkplain MockMvcRequestBuilder#exchange() exchange} to assign the
-	 * result.
+	 * {@link MockMvcRequestBuilder#exchange() exchange()} to assign the
+	 * result. To control the time to wait for asynchronous request to complete
+	 * on a per-request basis, use
+	 * {@link MockMvcRequestBuilder#exchange(Duration) exchange(Duration)}.
 	 * @return a request builder for specifying the target URI
 	 */
 	public MockMvcRequestBuilder put() {
@@ -267,8 +296,10 @@ public final class MockMvcTester {
 	 * Prepare an HTTP PATCH request.
 	 * <p>The returned builder can be wrapped in {@code assertThat} to enable
 	 * assertions on the result. For multi-statements assertions, use
-	 * {@linkplain MockMvcRequestBuilder#exchange() exchange} to assign the
-	 * result.
+	 * {@link MockMvcRequestBuilder#exchange() exchange()} to assign the
+	 * result. To control the time to wait for asynchronous request to complete
+	 * on a per-request basis, use
+	 * {@link MockMvcRequestBuilder#exchange(Duration) exchange(Duration)}.
 	 * @return a request builder for specifying the target URI
 	 */
 	public MockMvcRequestBuilder patch() {
@@ -279,8 +310,10 @@ public final class MockMvcTester {
 	 * Prepare an HTTP DELETE request.
 	 * <p>The returned builder can be wrapped in {@code assertThat} to enable
 	 * assertions on the result. For multi-statements assertions, use
-	 * {@linkplain MockMvcRequestBuilder#exchange() exchange} to assign the
-	 * result.
+	 * {@link MockMvcRequestBuilder#exchange() exchange()} to assign the
+	 * result. To control the time to wait for asynchronous request to complete
+	 * on a per-request basis, use
+	 * {@link MockMvcRequestBuilder#exchange(Duration) exchange(Duration)}.
 	 * @return a request builder for specifying the target URI
 	 */
 	public MockMvcRequestBuilder delete() {
@@ -291,8 +324,10 @@ public final class MockMvcTester {
 	 * Prepare an HTTP OPTIONS request.
 	 * <p>The returned builder can be wrapped in {@code assertThat} to enable
 	 * assertions on the result. For multi-statements assertions, use
-	 * {@linkplain MockMvcRequestBuilder#exchange() exchange} to assign the
-	 * result.
+	 * {@link MockMvcRequestBuilder#exchange() exchange()} to assign the
+	 * result. To control the time to wait for asynchronous request to complete
+	 * on a per-request basis, use
+	 * {@link MockMvcRequestBuilder#exchange(Duration) exchange(Duration)}.
 	 * @return a request builder for specifying the target URI
 	 */
 	public MockMvcRequestBuilder options() {
@@ -303,8 +338,10 @@ public final class MockMvcTester {
 	 * Prepare a request for the specified {@code HttpMethod}.
 	 * <p>The returned builder can be wrapped in {@code assertThat} to enable
 	 * assertions on the result. For multi-statements assertions, use
-	 * {@linkplain MockMvcRequestBuilder#exchange() exchange} to assign the
-	 * result.
+	 * {@link MockMvcRequestBuilder#exchange() exchange()} to assign the
+	 * result. To control the time to wait for asynchronous request to complete
+	 * on a per-request basis, use
+	 * {@link MockMvcRequestBuilder#exchange(Duration) exchange(Duration)}.
 	 * @return a request builder for specifying the target URI
 	 */
 	public MockMvcRequestBuilder method(HttpMethod method) {
@@ -312,17 +349,13 @@ public final class MockMvcTester {
 	}
 
 	/**
-	 * Perform a request using {@link MockMvcRequestBuilders} and return a
+	 * Perform a request using the given {@link RequestBuilder} and return a
 	 * {@link MvcTestResult result} that can be used with standard
 	 * {@link org.assertj.core.api.Assertions AssertJ} assertions.
-	 * <p>Use static methods of {@link MockMvcRequestBuilders} to prepare the
-	 * request, wrapping the invocation in {@code assertThat}. The following
-	 * asserts that a {@linkplain MockMvcRequestBuilders#get(URI) GET} request
-	 * against "/greet" has an HTTP status code 200 (OK) and a simple body:
-	 * <pre><code class="java">assertThat(mvc.perform(get("/greet")))
-	 *       .hasStatusOk()
-	 *       .body().asString().isEqualTo("Hello");
-	 * </code></pre>
+	 * <p>Use only this method if you need to provide a custom
+	 * {@link RequestBuilder}. For regular cases, users should initiate the
+	 * configuration of the request using one of the methods available on
+	 * this instance, e.g. {@link #get()} for HTTP GET.
 	 * <p>Contrary to {@link MockMvc#perform(RequestBuilder)}, this does not
 	 * throw an exception if the request fails with an unresolved exception.
 	 * Rather, the result provides the exception, if any. Assuming that a
@@ -330,25 +363,22 @@ public final class MockMvcTester {
 	 * {@code /boom} throws an {@code IllegalStateException}, the following
 	 * asserts that the invocation has indeed failed with the expected error
 	 * message:
-	 * <pre><code class="java">assertThat(mvc.perform(post("/boom")))
-	 *       .unresolvedException().isInstanceOf(IllegalStateException.class)
+	 * <pre><code class="java">assertThat(mvc.post().uri("/boom")))
+	 *       .failure().isInstanceOf(IllegalStateException.class)
 	 *       .hasMessage("Expected");
 	 * </code></pre>
-	 * @param requestBuilder used to prepare the request to execute;
-	 * see static factory methods in
-	 * {@link org.springframework.test.web.servlet.request.MockMvcRequestBuilders}
+	 * @param requestBuilder used to prepare the request to execute
 	 * @return an {@link MvcTestResult} to be wrapped in {@code assertThat}
 	 * @see MockMvc#perform(RequestBuilder)
-	 * @see #get()
-	 * @see #post()
+	 * @see #method(HttpMethod)
 	 */
 	public MvcTestResult perform(RequestBuilder requestBuilder) {
 		Object result = getMvcResultOrFailure(requestBuilder);
 		if (result instanceof MvcResult mvcResult) {
-			return new DefaultMvcTestResult(mvcResult, null, this.jsonMessageConverter);
+			return new DefaultMvcTestResult(mvcResult, null, this.contentConverter);
 		}
 		else {
-			return new DefaultMvcTestResult(null, (Exception) result, this.jsonMessageConverter);
+			return new DefaultMvcTestResult(null, (Exception) result, this.contentConverter);
 		}
 	}
 
@@ -361,17 +391,32 @@ public final class MockMvcTester {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
-	@Nullable
-	private GenericHttpMessageConverter<Object> findJsonMessageConverter(
-			Iterable<HttpMessageConverter<?>> messageConverters) {
+	/**
+	 * Execute the request using the specified {@link RequestBuilder}. If the
+	 * request is processing asynchronously, wait at most the given
+	 * {@code timeToWait} duration. If not specified, then fall back on the
+	 * timeout value associated with the async request, see
+	 * {@link org.springframework.mock.web.MockAsyncContext#setTimeout}.
+	 */
+	MvcTestResult exchange(RequestBuilder requestBuilder, @Nullable Duration timeToWait) {
+		MvcTestResult result = perform(requestBuilder);
+		if (result.getUnresolvedException() == null) {
+			if (result.getRequest().isAsyncStarted()) {
+				// Wait for async result before dispatching
+				long waitMs = (timeToWait != null ? timeToWait.toMillis() : -1);
+				result.getMvcResult().getAsyncResult(waitMs);
 
-		return StreamSupport.stream(messageConverters.spliterator(), false)
-				.filter(GenericHttpMessageConverter.class::isInstance)
-				.map(GenericHttpMessageConverter.class::cast)
-				.filter(converter -> converter.canWrite(null, Map.class, JSON))
-				.filter(converter -> converter.canRead(Map.class, JSON))
-				.findFirst().orElse(null);
+				// Perform ASYNC dispatch
+				RequestBuilder dispatchRequest = servletContext -> {
+					MockHttpServletRequest request = result.getMvcResult().getRequest();
+					request.setDispatcherType(DispatcherType.ASYNC);
+					request.setAsyncStarted(false);
+					return request;
+				};
+				return perform(dispatchRequest);
+			}
+		}
+		return result;
 	}
 
 
@@ -381,17 +426,123 @@ public final class MockMvcTester {
 	public final class MockMvcRequestBuilder extends AbstractMockHttpServletRequestBuilder<MockMvcRequestBuilder>
 			implements AssertProvider<MvcTestResultAssert> {
 
+		private final HttpMethod httpMethod;
+
 		private MockMvcRequestBuilder(HttpMethod httpMethod) {
 			super(httpMethod);
+			this.httpMethod = httpMethod;
 		}
 
+		/**
+		 * Enable file upload support using multipart.
+		 * @return a {@link MockMultipartMvcRequestBuilder} with the settings
+		 * configured thus far
+		 */
+		public MockMultipartMvcRequestBuilder multipart() {
+			return new MockMultipartMvcRequestBuilder(this);
+		}
+
+		/**
+		 * Execute the request. If the request is processing asynchronously,
+		 * wait at most the given timeout value associated with the async request,
+		 * see {@link org.springframework.mock.web.MockAsyncContext#setTimeout}.
+		 * <p>For simple assertions, you can wrap this builder in
+		 * {@code assertThat} rather than calling this method explicitly:
+		 * <pre><code class="java">
+		 * // These two examples are equivalent
+		 * assertThat(mvc.get().uri("/greet")).hasStatusOk();
+		 * assertThat(mvc.get().uri("/greet").exchange()).hasStatusOk();
+		 * </code></pre>
+		 * <p>For assertions on the original asynchronous request that might
+		 * still be in progress, use {@link #asyncExchange()}.
+		 * @see #exchange(Duration) to customize the timeout for async requests
+		 */
 		public MvcTestResult exchange() {
-			return perform(this);
+			return MockMvcTester.this.exchange(this, null);
+		}
+
+		/**
+		 * Execute the request and wait at most the given {@code timeToWait}
+		 * duration for the asynchronous request to complete. If the request
+		 * is not asynchronous, the {@code timeToWait} is ignored.
+		 * <p>For assertions on the original asynchronous request that might
+		 * still be in progress, use {@link #asyncExchange()}.
+		 * @see #exchange()
+		 */
+		public MvcTestResult exchange(Duration timeToWait) {
+			return MockMvcTester.this.exchange(this, timeToWait);
+		}
+
+		/**
+		 * Execute the request and do not attempt to wait for the completion of
+		 * an asynchronous request. Contrary to {@link #exchange()}, this returns
+		 * the original result that might still be in progress.
+		 */
+		public MvcTestResult asyncExchange() {
+			return MockMvcTester.this.perform(this);
 		}
 
 		@Override
 		public MvcTestResultAssert assertThat() {
-			return new MvcTestResultAssert(exchange(), MockMvcTester.this.jsonMessageConverter);
+			return new MvcTestResultAssert(exchange(), MockMvcTester.this.contentConverter);
+		}
+	}
+
+	/**
+	 * A builder for {@link MockMultipartHttpServletRequest} that supports AssertJ.
+	 */
+	public final class MockMultipartMvcRequestBuilder
+			extends AbstractMockMultipartHttpServletRequestBuilder<MockMultipartMvcRequestBuilder>
+			implements AssertProvider<MvcTestResultAssert> {
+
+		private MockMultipartMvcRequestBuilder(MockMvcRequestBuilder currentBuilder) {
+			super(currentBuilder.httpMethod);
+			merge(currentBuilder);
+		}
+
+		/**
+		 * Execute the request. If the request is processing asynchronously,
+		 * wait at most the given timeout value associated with the async request,
+		 * see {@link org.springframework.mock.web.MockAsyncContext#setTimeout}.
+		 * <p>For simple assertions, you can wrap this builder in
+		 * {@code assertThat} rather than calling this method explicitly:
+		 * <pre><code class="java">
+		 * // These two examples are equivalent
+		 * assertThat(mvc.get().uri("/greet")).hasStatusOk();
+		 * assertThat(mvc.get().uri("/greet").exchange()).hasStatusOk();
+		 * </code></pre>
+		 * <p>For assertions on the original asynchronous request that might
+		 * still be in progress, use {@link #asyncExchange()}.
+		 * @see #exchange(Duration) to customize the timeout for async requests
+		 */
+		public MvcTestResult exchange() {
+			return MockMvcTester.this.exchange(this, null);
+		}
+
+		/**
+		 * Execute the request and wait at most the given {@code timeToWait}
+		 * duration for the asynchronous request to complete. If the request
+		 * is not asynchronous, the {@code timeToWait} is ignored.
+		 * <p>For assertions on the original asynchronous request that might
+		 * still be in progress, use {@link #asyncExchange()}.
+		 * @see #exchange()
+		 */
+		public MvcTestResult exchange(Duration timeToWait) {
+			return MockMvcTester.this.exchange(this, timeToWait);
+		}
+
+		/**
+		 * Execute the request and do not attempt to wait for the completion of
+		 * an asynchronous request. Contrary to {@link #exchange()}, this returns
+		 * the original result that might still be in progress.
+		 */
+		public MvcTestResult asyncExchange() {
+			return MockMvcTester.this.perform(this);
+		}
+
+		@Override
+		public MvcTestResultAssert assertThat() {
+			return new MvcTestResultAssert(exchange(), MockMvcTester.this.contentConverter);
 		}
 	}
 

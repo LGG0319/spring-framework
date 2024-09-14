@@ -203,7 +203,7 @@ class ResourceWebHandlerTests {
 		}
 
 		@ParameterizedTest
-		@MethodSource("httpMethods")
+		@MethodSource("org.springframework.http.HttpMethod#values()")
 		void resourceNotFound(HttpMethod method) {
 			MockServerHttpRequest request = MockServerHttpRequest.method(method, "").build();
 			MockServerWebExchange exchange = MockServerWebExchange.from(request);
@@ -221,10 +221,6 @@ class ResourceWebHandlerTests {
 			AtomicReference<Throwable> exceptionRef = new AtomicReference<>();
 			StepVerifier.create(mono).consumeErrorWith(exceptionRef::set).verify();
 			StepVerifier.create(mono).consumeErrorWith(ex -> assertThat(ex).isNotSameAs(exceptionRef.get())).verify();
-		}
-
-		static Stream<HttpMethod> httpMethods() {
-			return Arrays.stream(HttpMethod.values());
 		}
 
 	}
@@ -606,7 +602,7 @@ class ResourceWebHandlerTests {
 			setBestMachingPattern(exchange, "/**");
 			this.handler.handle(exchange).block(TIMEOUT);
 
-			assertThat(exchange.getResponse().getHeaders().getContentType()).isEqualTo(MediaType.parseMediaType("application/javascript"));
+			assertThat(exchange.getResponse().getHeaders().getContentType()).isEqualTo(MediaType.parseMediaType("text/javascript"));
 			assertResponseBody(exchange, "function foo() { console.log(\"hello world\"); }");
 		}
 
@@ -619,12 +615,11 @@ class ResourceWebHandlerTests {
 			this.handler.handle(exchange).block(TIMEOUT);
 
 			HttpHeaders headers = exchange.getResponse().getHeaders();
-			assertThat(headers.getContentType()).isEqualTo(MediaType.parseMediaType("application/javascript"));
+			assertThat(headers.getContentType()).isEqualTo(MediaType.parseMediaType("text/javascript"));
 			assertResponseBody(exchange, "function foo() { console.log(\"hello world\"); }");
 		}
 
-		@Test
-			// gh-27538, gh-27624
+		@Test  // gh-27538, gh-27624
 		void filterNonExistingLocations() throws Exception {
 			this.handler.afterPropertiesSet();
 			ResourceWebHandler handler = new ResourceWebHandler();
@@ -685,7 +680,7 @@ class ResourceWebHandlerTests {
 		}
 
 		@ParameterizedTest
-		@MethodSource("httpMethods")
+		@MethodSource("org.springframework.http.HttpMethod#values()")
 		void resolvePathWithTraversal(HttpMethod method) throws Exception {
 			Resource location = new ClassPathResource("test/", getClass());
 			this.handler.setLocations(List.of(location));

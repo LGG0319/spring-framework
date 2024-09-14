@@ -332,7 +332,8 @@ class ConfigurationClassParser {
 			List<Condition> registerBeanConditions = collectRegisterBeanConditions(configClass);
 			if (!registerBeanConditions.isEmpty()) {
 				throw new ApplicationContextException(
-						"Component scan could not be used with conditions in REGISTER_BEAN phase: " + registerBeanConditions);
+						"Component scan for configuration class [%s] could not be used with conditions in REGISTER_BEAN phase: %s"
+								.formatted(configClass.getMetadata().getClassName(), registerBeanConditions));
 			}
 			for (AnnotationAttributes componentScan : componentScans) {
 				// The config class is annotated with @ComponentScan -> perform the scan immediately
@@ -375,6 +376,9 @@ class ConfigurationClassParser {
 		//将被@Bean修饰的转化为BeanMethod对象，保存到集合中
 		Set<MethodMetadata> beanMethods = retrieveBeanMethodMetadata(sourceClass);
 		for (MethodMetadata methodMetadata : beanMethods) {
+			if (methodMetadata.isAnnotated("kotlin.jvm.JvmStatic") && !methodMetadata.isStatic()) {
+				continue;
+			}
 			configClass.addBeanMethod(new BeanMethod(methodMetadata, configClass));
 		}
 
@@ -697,7 +701,10 @@ class ConfigurationClassParser {
 	private Collection<SourceClass> asSourceClasses(String[] classNames, Predicate<String> filter) throws IOException {
 		List<SourceClass> annotatedClasses = new ArrayList<>(classNames.length);
 		for (String className : classNames) {
-			annotatedClasses.add(asSourceClass(className, filter));
+			SourceClass sourceClass = asSourceClass(className, filter);
+			if (this.objectSourceClass != sourceClass) {
+				annotatedClasses.add(sourceClass);
+			}
 		}
 		return annotatedClasses;
 	}

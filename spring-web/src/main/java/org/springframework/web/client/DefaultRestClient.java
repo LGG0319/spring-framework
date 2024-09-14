@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -59,6 +60,7 @@ import org.springframework.http.client.observation.DefaultClientRequestObservati
 import org.springframework.http.converter.GenericHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.http.converter.SmartHttpMessageConverter;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
@@ -81,6 +83,8 @@ final class DefaultRestClient implements RestClient {
 	private static final Log logger = LogFactory.getLog(DefaultRestClient.class);
 
 	private static final ClientRequestObservationConvention DEFAULT_OBSERVATION_CONVENTION = new DefaultClientRequestObservationConvention();
+
+	private static final String URI_TEMPLATE_ATTRIBUTE = RestClient.class.getName() + ".uriTemplate";
 
 
 	private final ClientHttpRequestFactory clientRequestFactory;
@@ -200,7 +204,7 @@ final class DefaultRestClient implements RestClient {
 
 		MediaType contentType = getContentType(clientResponse);
 
-		try (clientResponse) {
+		try {
 			callback.run();
 
 			IntrospectingClientHttpResponse responseWrapper = new IntrospectingClientHttpResponse(clientResponse);
@@ -209,28 +213,34 @@ final class DefaultRestClient implements RestClient {
 			}
 
 			for (HttpMessageConverter<?> messageConverter : this.messageConverters) {
-				if (messageConverter instanceof GenericHttpMessageConverter genericHttpMessageConverter) {
-					if (genericHttpMessageConverter.canRead(bodyType, null, contentType)) {
+				if (messageConverter instanceof GenericHttpMessageConverter genericMessageConverter) {
+					if (genericMessageConverter.canRead(bodyType, null, contentType)) {
 						if (logger.isDebugEnabled()) {
 							logger.debug("Reading to [" + ResolvableType.forType(bodyType) + "]");
 						}
-						return (T) genericHttpMessageConverter.read(bodyType, null, responseWrapper);
+						return (T) genericMessageConverter.read(bodyType, null, responseWrapper);
 					}
 				}
-				if (messageConverter.canRead(bodyClass, contentType)) {
+				else if (messageConverter instanceof SmartHttpMessageConverter smartMessageConverter) {
+					ResolvableType resolvableType = ResolvableType.forType(bodyType);
+					if (smartMessageConverter.canRead(resolvableType, contentType)) {
+						if (logger.isDebugEnabled()) {
+							logger.debug("Reading to [" + resolvableType + "]");
+						}
+						return (T) smartMessageConverter.read(resolvableType, responseWrapper, null);
+					}
+				}
+				else if (messageConverter.canRead(bodyClass, contentType)) {
 					if (logger.isDebugEnabled()) {
 						logger.debug("Reading to [" + bodyClass.getName() + "] as \"" + contentType + "\"");
 					}
 					return (T) messageConverter.read((Class)bodyClass, responseWrapper);
 				}
 			}
-			UnknownContentTypeException unknownContentTypeException = new UnknownContentTypeException(bodyType, contentType,
+
+			throw new UnknownContentTypeException(bodyType, contentType,
 					responseWrapper.getStatusCode(), responseWrapper.getStatusText(),
 					responseWrapper.getHeaders(), RestClientUtils.getBody(responseWrapper));
-			if (observation != null) {
-				observation.error(unknownContentTypeException);
-			}
-			throw unknownContentTypeException;
 		}
 		catch (UncheckedIOException | IOException | HttpMessageNotReadableException exc) {
 			Throwable cause;
@@ -254,9 +264,7 @@ final class DefaultRestClient implements RestClient {
 			throw restClientException;
 		}
 		finally {
-			if (observation != null) {
-				observation.stop();
-			}
+			clientResponse.close();
 		}
 	}
 
@@ -297,7 +305,7 @@ final class DefaultRestClient implements RestClient {
 		private InternalBody body;
 
 		@Nullable
-		private String uriTemplate;
+		private Map<String, Object> attributes;
 
 		@Nullable
 		private Consumer<ClientHttpRequest> httpRequestConsumer;
@@ -308,19 +316,19 @@ final class DefaultRestClient implements RestClient {
 
 		@Override
 		public RequestBodySpec uri(String uriTemplate, Object... uriVariables) {
-			this.uriTemplate = uriTemplate;
+			attribute(URI_TEMPLATE_ATTRIBUTE, uriTemplate);
 			return uri(DefaultRestClient.this.uriBuilderFactory.expand(uriTemplate, uriVariables));
 		}
 
 		@Override
 		public RequestBodySpec uri(String uriTemplate, Map<String, ?> uriVariables) {
-			this.uriTemplate = uriTemplate;
+			attribute(URI_TEMPLATE_ATTRIBUTE, uriTemplate);
 			return uri(DefaultRestClient.this.uriBuilderFactory.expand(uriTemplate, uriVariables));
 		}
 
 		@Override
 		public RequestBodySpec uri(String uriTemplate, Function<UriBuilder, URI> uriFunction) {
-			this.uriTemplate = uriTemplate;
+			attribute(URI_TEMPLATE_ATTRIBUTE, uriTemplate);
 			return uri(uriFunction.apply(DefaultRestClient.this.uriBuilderFactory.uriString(uriTemplate)));
 		}
 
@@ -331,7 +339,13 @@ final class DefaultRestClient implements RestClient {
 
 		@Override
 		public RequestBodySpec uri(URI uri) {
-			this.uri = uri;
+			if (uri.isAbsolute()) {
+				this.uri = uri;
+			}
+			else {
+				URI baseUri = DefaultRestClient.this.uriBuilderFactory.expand("");
+				this.uri = baseUri.resolve(uri);
+			}
 			return this;
 		}
 
@@ -393,6 +407,27 @@ final class DefaultRestClient implements RestClient {
 		}
 
 		@Override
+		public RequestBodySpec attribute(String name, Object value) {
+			getAttributes().put(name, value);
+			return this;
+		}
+
+		@Override
+		public RequestBodySpec attributes(Consumer<Map<String, Object>> attributesConsumer) {
+			attributesConsumer.accept(getAttributes());
+			return this;
+		}
+
+		private Map<String, Object> getAttributes() {
+			Map<String, Object> attributes = this.attributes;
+			if (attributes == null) {
+				attributes = new ConcurrentHashMap<>(4);
+				this.attributes = attributes;
+			}
+			return attributes;
+		}
+
+		@Override
 		public RequestBodySpec httpRequest(Consumer<ClientHttpRequest> requestConsumer) {
 			this.httpRequestConsumer = (this.httpRequestConsumer != null ?
 					this.httpRequestConsumer.andThen(requestConsumer) : requestConsumer);
@@ -432,7 +467,15 @@ final class DefaultRestClient implements RestClient {
 						return;
 					}
 				}
-				if (messageConverter.canWrite(bodyClass, contentType)) {
+				else if (messageConverter instanceof SmartHttpMessageConverter smartMessageConverter) {
+					ResolvableType resolvableType = ResolvableType.forType(bodyType);
+					if (smartMessageConverter.canWrite(resolvableType, bodyClass, contentType)) {
+						logBody(body, contentType, smartMessageConverter);
+						smartMessageConverter.write(body, resolvableType, contentType, clientRequest, null);
+						return;
+					}
+				}
+				else if (messageConverter.canWrite(bodyClass, contentType)) {
 					logBody(body, contentType, messageConverter);
 					messageConverter.write(body, contentType, clientRequest);
 					return;
@@ -477,16 +520,20 @@ final class DefaultRestClient implements RestClient {
 
 			ClientHttpResponse clientResponse = null;
 			Observation observation = null;
+			Observation.Scope observationScope = null;
 			URI uri = null;
 			try {
 				uri = initUri();
 				HttpHeaders headers = initHeaders();
 				ClientHttpRequest clientRequest = createRequest(uri);
 				clientRequest.getHeaders().addAll(headers);
+				Map<String, Object> attributes = getAttributes();
+				clientRequest.getAttributes().putAll(attributes);
 				ClientRequestObservationContext observationContext = new ClientRequestObservationContext(clientRequest);
-				observationContext.setUriTemplate(this.uriTemplate);
+				observationContext.setUriTemplate((String) attributes.get(URI_TEMPLATE_ATTRIBUTE));
 				observation = ClientHttpObservationDocumentation.HTTP_CLIENT_EXCHANGES.observation(observationConvention,
 						DEFAULT_OBSERVATION_CONVENTION, () -> observationContext, observationRegistry).start();
+				observationScope = observation.openScope();
 				if (this.body != null) {
 					this.body.writeTo(clientRequest);
 				}
@@ -495,11 +542,14 @@ final class DefaultRestClient implements RestClient {
 				}
 				clientResponse = clientRequest.execute();
 				observationContext.setResponse(clientResponse);
-				ConvertibleClientHttpResponse convertibleWrapper = new DefaultConvertibleClientHttpResponse(clientResponse, observation);
+				ConvertibleClientHttpResponse convertibleWrapper = new DefaultConvertibleClientHttpResponse(clientResponse, observation, observationScope);
 				return exchangeFunction.exchange(clientRequest, convertibleWrapper);
 			}
 			catch (IOException ex) {
 				ResourceAccessException resourceAccessException = createResourceAccessException(uri, this.httpMethod, ex);
+				if (observationScope != null) {
+					observationScope.close();
+				}
 				if (observation != null) {
 					observation.error(resourceAccessException);
 					observation.stop();
@@ -507,6 +557,9 @@ final class DefaultRestClient implements RestClient {
 				throw resourceAccessException;
 			}
 			catch (Throwable error) {
+				if (observationScope != null) {
+					observationScope.close();
+				}
 				if (observation != null) {
 					observation.error(error);
 					observation.stop();
@@ -516,6 +569,9 @@ final class DefaultRestClient implements RestClient {
 			finally {
 				if (close && clientResponse != null) {
 					clientResponse.close();
+					if (observationScope != null) {
+						observationScope.close();
+					}
 					if (observation != null) {
 						observation.stop();
 					}
@@ -726,10 +782,12 @@ final class DefaultRestClient implements RestClient {
 
 		private final Observation observation;
 
+		private final Observation.Scope observationScope;
 
-		public DefaultConvertibleClientHttpResponse(ClientHttpResponse delegate, Observation observation) {
+		public DefaultConvertibleClientHttpResponse(ClientHttpResponse delegate, Observation observation, Observation.Scope observationScope) {
 			this.delegate = delegate;
 			this.observation = observation;
+			this.observationScope = observationScope;
 		}
 
 
@@ -770,6 +828,7 @@ final class DefaultRestClient implements RestClient {
 		@Override
 		public void close() {
 			this.delegate.close();
+			this.observationScope.close();
 			this.observation.stop();
 		}
 

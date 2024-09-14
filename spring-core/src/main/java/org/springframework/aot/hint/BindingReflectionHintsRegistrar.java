@@ -55,8 +55,9 @@ public class BindingReflectionHintsRegistrar {
 
 	private static final String JACKSON_ANNOTATION = "com.fasterxml.jackson.annotation.JacksonAnnotation";
 
-	private static final boolean jacksonAnnotationPresent = ClassUtils.isPresent(JACKSON_ANNOTATION,
-			BindingReflectionHintsRegistrar.class.getClassLoader());
+	private static final boolean jacksonAnnotationPresent =
+			ClassUtils.isPresent(JACKSON_ANNOTATION, BindingReflectionHintsRegistrar.class.getClassLoader());
+
 
 	/**
 	 * Register the necessary reflection hints to bind the specified types.
@@ -96,12 +97,10 @@ public class BindingReflectionHintsRegistrar {
 						}
 					}
 					if (clazz.isEnum()) {
-						typeHint.withMembers(
-								MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS,
+						typeHint.withMembers(MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS,
 								MemberCategory.INVOKE_PUBLIC_METHODS);
 					}
-					typeHint.withMembers(
-							MemberCategory.DECLARED_FIELDS,
+					typeHint.withMembers(MemberCategory.DECLARED_FIELDS,
 							MemberCategory.INVOKE_DECLARED_CONSTRUCTORS);
 					for (Method method : clazz.getMethods()) {
 						String methodName = method.getName();
@@ -109,7 +108,8 @@ public class BindingReflectionHintsRegistrar {
 							registerPropertyHints(hints, seen, method, 0);
 						}
 						else if ((methodName.startsWith("get") && method.getParameterCount() == 0 && method.getReturnType() != void.class) ||
-								(methodName.startsWith("is") && method.getParameterCount() == 0 && method.getReturnType() == boolean.class)) {
+								(methodName.startsWith("is") && method.getParameterCount() == 0
+										&& ClassUtils.resolvePrimitiveIfNecessary(method.getReturnType()) == Boolean.class)) {
 							registerPropertyHints(hints, seen, method, -1);
 						}
 					}
@@ -138,8 +138,7 @@ public class BindingReflectionHintsRegistrar {
 	}
 
 	private void registerPropertyHints(ReflectionHints hints, Set<Type> seen, @Nullable Method method, int parameterIndex) {
-		if (method != null && method.getDeclaringClass() != Object.class &&
-				method.getDeclaringClass() != Enum.class) {
+		if (method != null && method.getDeclaringClass() != Object.class && method.getDeclaringClass() != Enum.class) {
 			hints.registerMethod(method, ExecutableMode.INVOKE);
 			MethodParameter methodParameter = MethodParameter.forExecutable(method, parameterIndex);
 			Type methodParameterType = methodParameter.getGenericParameterType();
@@ -213,6 +212,7 @@ public class BindingReflectionHintsRegistrar {
 			}
 		});
 	}
+
 
 	/**
 	 * Inner class to avoid a hard dependency on Kotlin at runtime.

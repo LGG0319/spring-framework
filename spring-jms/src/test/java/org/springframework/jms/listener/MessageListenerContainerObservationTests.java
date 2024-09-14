@@ -23,10 +23,11 @@ import java.util.stream.Stream;
 
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.tck.TestObservationRegistry;
+import jakarta.jms.Message;
 import jakarta.jms.MessageListener;
+import jakarta.jms.TextMessage;
 import org.apache.activemq.artemis.jms.client.ActiveMQConnectionFactory;
 import org.apache.activemq.artemis.junit.EmbeddedActiveMQExtension;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -37,8 +38,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.jms.core.JmsTemplate;
 
 import static io.micrometer.observation.tck.TestObservationRegistryAssert.assertThat;
-import static org.junit.jupiter.api.Named.named;
-import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.Arguments.argumentSet;
 
 /**
  * Observation tests for {@link AbstractMessageListenerContainer} implementations.
@@ -60,7 +61,7 @@ class MessageListenerContainerObservationTests {
 		connectionFactory = new ActiveMQConnectionFactory(server.getVmURL());
 	}
 
-	@ParameterizedTest(name = "[{index}] {0}")
+	@ParameterizedTest
 	@MethodSource("listenerContainers")
 	void shouldRecordJmsProcessObservations(AbstractMessageListenerContainer listenerContainer) throws Exception {
 		CountDownLatch latch = new CountDownLatch(1);
@@ -81,7 +82,33 @@ class MessageListenerContainerObservationTests {
 		listenerContainer.shutdown();
 	}
 
-	@ParameterizedTest(name = "[{index}] {0}")
+	@ParameterizedTest
+	@MethodSource("listenerContainers")
+	void shouldRecordJmsPublishObservations(AbstractMessageListenerContainer listenerContainer) throws Exception {
+		listenerContainer.setConnectionFactory(connectionFactory);
+		listenerContainer.setObservationRegistry(registry);
+		listenerContainer.setDestinationName("spring.test.observation");
+		listenerContainer.setMessageListener((SessionAwareMessageListener<?>) (message, session) -> {
+			Message response = session.createTextMessage("test response");
+			session.createProducer(message.getJMSReplyTo()).send(response);
+		});
+		listenerContainer.afterPropertiesSet();
+		listenerContainer.start();
+		JmsTemplate jmsTemplate = new JmsTemplate(connectionFactory);
+		TextMessage response = (TextMessage) jmsTemplate.sendAndReceive("spring.test.observation",
+							session -> session.createTextMessage("test request"));
+
+		// request received by listener and response received by template
+		assertThat(registry).hasNumberOfObservationsWithNameEqualTo("jms.message.process", 2);
+		// response sent to the template
+		assertThat(registry).hasNumberOfObservationsWithNameEqualTo("jms.message.publish", 1);
+
+		assertThat(response.getText()).isEqualTo("test response");
+		listenerContainer.stop();
+		listenerContainer.shutdown();
+	}
+
+	@ParameterizedTest
 	@MethodSource("listenerContainers")
 	void shouldHaveObservationScopeInErrorHandler(AbstractMessageListenerContainer listenerContainer) throws Exception {
 		CountDownLatch latch = new CountDownLatch(1);
@@ -101,7 +128,7 @@ class MessageListenerContainerObservationTests {
 		JmsTemplate jmsTemplate = new JmsTemplate(connectionFactory);
 		jmsTemplate.convertAndSend("spring.test.observation", "message content");
 		latch.await(2, TimeUnit.SECONDS);
-		Assertions.assertThat(observationInErrorHandler.get()).isNotNull();
+		assertThat(observationInErrorHandler.get()).isNotNull();
 		assertThat(registry).hasObservationWithNameEqualTo("jms.message.process")
 				.that()
 				.hasHighCardinalityKeyValue("messaging.destination.name", "spring.test.observation")
@@ -113,8 +140,8 @@ class MessageListenerContainerObservationTests {
 
 	static Stream<Arguments> listenerContainers() {
 		return Stream.of(
-				arguments(named(DefaultMessageListenerContainer.class.getSimpleName(), new DefaultMessageListenerContainer())),
-				arguments(named(SimpleMessageListenerContainer.class.getSimpleName(), new SimpleMessageListenerContainer()))
+				argumentSet(DefaultMessageListenerContainer.class.getSimpleName(), new DefaultMessageListenerContainer()),
+				argumentSet(SimpleMessageListenerContainer.class.getSimpleName(), new SimpleMessageListenerContainer())
 		);
 	}
 

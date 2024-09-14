@@ -44,6 +44,8 @@ import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import jakarta.servlet.AsyncContext;
+import jakarta.servlet.AsyncEvent;
+import jakarta.servlet.AsyncListener;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletConnection;
@@ -253,6 +255,9 @@ public class MockHttpServletRequest implements HttpServletRequest {
 
 	@Nullable
 	private String requestedSessionId;
+
+	@Nullable
+	private String uriTemplate;
 
 	@Nullable
 	private String requestURI;
@@ -920,7 +925,19 @@ public class MockHttpServletRequest implements HttpServletRequest {
 	public AsyncContext startAsync(ServletRequest request, @Nullable ServletResponse response) {
 		Assert.state(this.asyncSupported, "Async not supported");
 		this.asyncStarted = true;
-		this.asyncContext = new MockAsyncContext(request, response);
+		MockAsyncContext newAsyncContext = new MockAsyncContext(request, response);
+		if (this.asyncContext != null) {
+			try {
+				AsyncEvent startEvent = new AsyncEvent(newAsyncContext);
+				for (AsyncListener asyncListener : this.asyncContext.getListeners()) {
+					asyncListener.onStartAsync(startEvent);
+				}
+			}
+			catch (IOException ex) {
+				// ignore failures
+			}
+		}
+		this.asyncContext = newAsyncContext;
 		return this.asyncContext;
 	}
 
@@ -1268,6 +1285,24 @@ public class MockHttpServletRequest implements HttpServletRequest {
 	@Nullable
 	public String getRequestedSessionId() {
 		return this.requestedSessionId;
+	}
+
+	/**
+	 * Set the original URI template used to prepare the request, if any.
+	 * @param uriTemplate the URI template used to set up the request, if any
+	 * @since 6.2
+	 */
+	public void setUriTemplate(@Nullable String uriTemplate) {
+		this.uriTemplate = uriTemplate;
+	}
+
+	/**
+	 * Return the original URI template used to prepare the request, if any.
+	 * @since 6.2
+	 */
+	@Nullable
+	public String getUriTemplate() {
+		return this.uriTemplate;
 	}
 
 	public void setRequestURI(@Nullable String requestURI) {

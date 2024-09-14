@@ -115,6 +115,8 @@ class BeanDefinitionPropertiesCodeGenerator {
 		CodeBlock.Builder code = CodeBlock.builder();
 		addStatementForValue(code, beanDefinition, BeanDefinition::isPrimary,
 				"$L.setPrimary($L)");
+		addStatementForValue(code, beanDefinition, BeanDefinition::isFallback,
+				"$L.setFallback($L)");
 		addStatementForValue(code, beanDefinition, BeanDefinition::getScope,
 				this::hasScope, "$L.setScope($S)");
 		addStatementForValue(code, beanDefinition, BeanDefinition::getDependsOn,
@@ -174,9 +176,9 @@ class BeanDefinitionPropertiesCodeGenerator {
 		Method method = ReflectionUtils.findMethod(methodDeclaringClass, methodName);
 		if (method != null) {
 			this.hints.reflection().registerMethod(method, ExecutableMode.INVOKE);
-			Method interfaceMethod = ClassUtils.getInterfaceMethodIfPossible(method, beanUserClass);
-			if (!interfaceMethod.equals(method)) {
-				this.hints.reflection().registerMethod(interfaceMethod, ExecutableMode.INVOKE);
+			Method publiclyAccessibleMethod = ClassUtils.getPubliclyAccessibleMethodIfPossible(method, beanUserClass);
+			if (!publiclyAccessibleMethod.equals(method)) {
+				this.hints.reflection().registerMethod(publiclyAccessibleMethod, ExecutableMode.INVOKE);
 			}
 		}
 	}

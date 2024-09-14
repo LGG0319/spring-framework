@@ -77,6 +77,7 @@ class ReactorServerHttpResponse extends AbstractServerHttpResponse implements Ze
 
 	@Override
 	@Deprecated
+	@SuppressWarnings("removal")
 	public Integer getRawStatusCode() {
 		Integer status = super.getRawStatusCode();
 		return (status != null ? status : this.response.status().code());
@@ -120,6 +121,7 @@ class ReactorServerHttpResponse extends AbstractServerHttpResponse implements Ze
 				}
 				cookie.setSecure(httpCookie.isSecure());
 				cookie.setHttpOnly(httpCookie.isHttpOnly());
+				cookie.setPartitioned(httpCookie.isPartitioned());
 				if (httpCookie.getSameSite() != null) {
 					cookie.setSameSite(CookieHeaderNames.SameSite.valueOf(httpCookie.getSameSite()));
 				}

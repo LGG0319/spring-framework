@@ -83,6 +83,9 @@ public abstract class AbstractMockHttpServletRequestBuilder<B extends AbstractMo
 	private final HttpMethod method;
 
 	@Nullable
+	private String uriTemplate;
+
+	@Nullable
 	private URI uri;
 
 	private String contextPath = "";
@@ -152,15 +155,20 @@ public abstract class AbstractMockHttpServletRequestBuilder<B extends AbstractMo
 	 * Specify the URI using an absolute, fully constructed {@link java.net.URI}.
 	 */
 	public B uri(URI uri) {
-		this.uri = uri;
-		return self();
+		return updateUri(uri, null);
 	}
 
 	/**
 	 * Specify the URI for the request using a URI template and URI variables.
 	 */
 	public B uri(String uriTemplate, Object... uriVariables) {
-		return uri(initUri(uriTemplate, uriVariables));
+		return updateUri(initUri(uriTemplate, uriVariables), uriTemplate);
+	}
+
+	private B updateUri(URI uri, @Nullable String uriTemplate) {
+		this.uri = uri;
+		this.uriTemplate = uriTemplate;
+		return self();
 	}
 
 	private static URI initUri(String uri, Object[] vars) {
@@ -592,6 +600,10 @@ public abstract class AbstractMockHttpServletRequestBuilder<B extends AbstractMo
 		if (!(parent instanceof AbstractMockHttpServletRequestBuilder<?> parentBuilder)) {
 			throw new IllegalArgumentException("Cannot merge with [" + parent.getClass().getName() + "]");
 		}
+		if (this.uri == null) {
+			this.uri = parentBuilder.uri;
+			this.uriTemplate = parentBuilder.uriTemplate;
+		}
 		if (!StringUtils.hasText(this.contextPath)) {
 			this.contextPath = parentBuilder.contextPath;
 		}
@@ -703,6 +715,8 @@ public abstract class AbstractMockHttpServletRequestBuilder<B extends AbstractMo
 
 		request.setAsyncSupported(true);
 		request.setMethod(this.method.name());
+
+		request.setUriTemplate(this.uriTemplate);
 
 		String requestUri = this.uri.getRawPath();
 		request.setRequestURI(requestUri);
@@ -902,7 +916,7 @@ public abstract class AbstractMockHttpServletRequestBuilder<B extends AbstractMo
 		};
 
 		try {
-			return (MultiValueMap<String, String>) new FormHttpMessageConverter().read(null, message);
+			return new FormHttpMessageConverter().read(null, message);
 		}
 		catch (IOException ex) {
 			throw new IllegalStateException("Failed to parse form data in request body", ex);

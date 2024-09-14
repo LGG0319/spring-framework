@@ -16,7 +16,6 @@
 
 package org.springframework.web.util;
 
-import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -236,7 +235,8 @@ public class UriComponentsBuilder implements UriBuilder, Cloneable {
 				builder.port(urlRecord.port().toString());
 			}
 			if (urlRecord.path().isOpaque()) {
-				builder.schemeSpecificPart(urlRecord.path().toString());
+				String ssp = urlRecord.path() + urlRecord.search();
+				builder.schemeSpecificPart(ssp);
 			}
 			else {
 				builder.path(urlRecord.path().toString());
@@ -264,7 +264,8 @@ public class UriComponentsBuilder implements UriBuilder, Cloneable {
 	 * </pre>
 	 * @param httpUrl the source URI
 	 * @return the URI components of the URI
-	 * @deprecated as of 6.2, in favor of {@link #fromUriString(String)}
+	 * @deprecated as of 6.2, in favor of {@link #fromUriString(String)};
+	 * scheduled for removal in 7.0.
 	 */
 	@Deprecated(since = "6.2")
 	public static UriComponentsBuilder fromHttpUrl(String httpUrl) throws InvalidUrlException {
@@ -290,31 +291,11 @@ public class UriComponentsBuilder implements UriBuilder, Cloneable {
 	 * @return the URI components of the URI
 	 * @since 4.1.5
 	 * @deprecated in favor of {@link ForwardedHeaderUtils#adaptFromForwardedHeaders};
-	 * to be removed in 6.2
+	 * to be removed in 7.0
 	 */
 	@Deprecated(since = "6.1", forRemoval = true)
 	public static UriComponentsBuilder fromHttpRequest(HttpRequest request) {
 		return ForwardedHeaderUtils.adaptFromForwardedHeaders(request.getURI(), request.getHeaders());
-	}
-
-	/**
-	 * Parse the first "Forwarded: for=..." or "X-Forwarded-For" header value to
-	 * an {@code InetSocketAddress} representing the address of the client.
-	 * @param request a request with headers that may contain forwarded headers
-	 * @param remoteAddress the current remoteAddress
-	 * @return an {@code InetSocketAddress} with the extracted host and port, or
-	 * {@code null} if the headers are not present.
-	 * @since 5.3
-	 * @deprecated in favor of {@link ForwardedHeaderUtils#parseForwardedFor};
-	 * to be removed in 6.2
-	 */
-	@Deprecated(since = "6.1", forRemoval = true)
-	@Nullable
-	public static InetSocketAddress parseForwardedFor(
-			HttpRequest request, @Nullable InetSocketAddress remoteAddress) {
-
-		return ForwardedHeaderUtils.parseForwardedFor(
-				request.getURI(), request.getHeaders(), remoteAddress);
 	}
 
 	/**
