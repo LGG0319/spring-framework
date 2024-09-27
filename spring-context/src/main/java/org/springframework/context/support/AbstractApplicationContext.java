@@ -118,7 +118,7 @@ import org.springframework.util.ReflectionUtils;
  * {@link org.springframework.core.io.DefaultResourceLoader}.
  * Consequently treats non-URL resource paths as class path resources
  * (supporting full class path resource names that include the package path,
- * e.g. "mypackage/myresource.dat"), unless the {@link #getResourceByPath}
+ * for example, "mypackage/myresource.dat"), unless the {@link #getResourceByPath}
  * method is overridden in a subclass.
  *
  * @author Rod Johnson
@@ -234,7 +234,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	@Nullable
 	private ApplicationEventMulticaster applicationEventMulticaster;
 
-	/** Application startup metrics. **/
+	/** Application startup metrics. */
 	private ApplicationStartup applicationStartup = ApplicationStartup.DEFAULT;
 
 	/** Statically specified listeners. */
@@ -853,7 +853,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		PostProcessorRegistrationDelegate.invokeBeanFactoryPostProcessors(beanFactory, getBeanFactoryPostProcessors());
 
 		// Detect a LoadTimeWeaver and prepare for weaving, if found in the meantime
-		// (e.g. through an @Bean method registered by ConfigurationClassPostProcessor)
+		// (for example, through an @Bean method registered by ConfigurationClassPostProcessor)
 		// 检测LoadTimeWeaver并准备编织（如果同时发现）
 		if (!NativeDetector.inNativeImage() && beanFactory.getTempClassLoader() == null &&
 				beanFactory.containsBean(LOAD_TIME_WEAVER_BEAN_NAME)) {
@@ -1172,7 +1172,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 
 	/**
 	 * Determine whether an active startup/shutdown thread is currently stuck,
-	 * e.g. through a {@code System.exit} call in a user component.
+	 * for example, through a {@code System.exit} call in a user component.
 	 */
 	private boolean isStartupShutdownThreadStuck() {
 		Thread activeThread = this.startupShutdownThread;

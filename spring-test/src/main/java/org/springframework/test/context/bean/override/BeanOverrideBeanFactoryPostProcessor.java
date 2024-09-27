@@ -53,7 +53,7 @@ import org.springframework.util.StringUtils;
  * of the test class.
  *
  * <p>This processor does not work against a particular test class, it only prepares
- * the bean factory for the identified, unique, set of bean overrides.
+ * the bean factory for the identified, unique set of bean overrides.
  *
  * @author Simon Baslé
  * @author Stephane Nicoll
@@ -149,8 +149,10 @@ class BeanOverrideBeanFactoryPostProcessor implements BeanFactoryPostProcessor, 
 				existingBeanDefinition = beanFactory.getBeanDefinition(beanName);
 			}
 			else if (enforceExistingDefinition) {
-				throw new IllegalStateException("Unable to override bean '" + beanName + "': there is no " +
-						"bean definition to replace with that name of type " + overrideMetadata.getBeanType());
+				throw new IllegalStateException("""
+						Unable to override bean: there is no bean definition to replace \
+						with name [%s] and type [%s]."""
+							.formatted(beanName, overrideMetadata.getBeanType()));
 			}
 			beanNameIncludingFactory = beanName;
 		}
