@@ -16,6 +16,6 @@ public class MyPropertySource extends AnnotationConfigApplicationContext {
 	@Override
 	protected void initPropertySources() {
 		super.initPropertySources();
-		getEnvironment().setRequiredProperties("Path");
+		getEnvironment().setRequiredProperties("NODE_PATH");
 	}
 }
