@@ -206,7 +206,10 @@ class CglibAopProxy implements AopProxy, Serializable {
 			enhancer.setInterfaces(AopProxyUtils.completeProxiedInterfaces(this.advised));
 			enhancer.setNamingPolicy(SpringNamingPolicy.INSTANCE);
 			enhancer.setAttemptLoad(true);
-			enhancer.setStrategy(new ClassLoaderAwareGeneratorStrategy(classLoader, undeclaredThrowableStrategy));
+			enhancer.setStrategy(KotlinDetector.isKotlinType(proxySuperClass) ?
+					new ClassLoaderAwareGeneratorStrategy(classLoader) :
+					new ClassLoaderAwareGeneratorStrategy(classLoader, undeclaredThrowableStrategy)
+			);
 
 			Callback[] callbacks = getCallbacks(rootClass);
 			Class<?>[] types = new Class<?>[callbacks.length];
@@ -669,8 +672,8 @@ class CglibAopProxy implements AopProxy, Serializable {
 		@Override
 		@Nullable
 		public Object intercept(Object proxy, Method method, Object[] args, MethodProxy methodProxy) throws Throwable {
-			MethodInvocation invocation = new CglibMethodInvocation(
-					proxy, this.target, method, args, this.targetClass, this.adviceChain, methodProxy);
+			MethodInvocation invocation = new ReflectiveMethodInvocation(
+					proxy, this.target, method, args, this.targetClass, this.adviceChain);
 			// If we get here, we need to create a MethodInvocation.
 			Object retVal = invocation.proceed();
 			retVal = processReturnType(proxy, this.target, method, args, retVal);
@@ -730,8 +733,8 @@ class CglibAopProxy implements AopProxy, Serializable {
 					retVal = AopUtils.invokeJoinpointUsingReflection(target, method, argsToUse);
 				}
 				else {
-					// We need to create a method invocation... 创建一个方法执行器   执行代理类的入口
-					retVal = new CglibMethodInvocation(proxy, target, method, args, targetClass, chain, methodProxy).proceed();
+					// We need to create a method invocation...  创建一个方法执行器   执行代理类的入口
+					retVal = new ReflectiveMethodInvocation(proxy, target, method, args, targetClass, chain).proceed();
 				}
 				return processReturnType(proxy, target, method, args, retVal);
 			}
@@ -759,26 +762,6 @@ class CglibAopProxy implements AopProxy, Serializable {
 		@Override
 		public int hashCode() {
 			return this.advised.hashCode();
-		}
-	}
-
-
-	/**
-	 * Implementation of AOP Alliance MethodInvocation used by this AOP proxy.
-	 */
-	private static class CglibMethodInvocation extends ReflectiveMethodInvocation {
-
-		public CglibMethodInvocation(Object proxy, @Nullable Object target, Method method,
-				Object[] arguments, @Nullable Class<?> targetClass,
-				List<Object> interceptorsAndDynamicMethodMatchers, MethodProxy methodProxy) {
-
-			super(proxy, target, method, arguments, targetClass, interceptorsAndDynamicMethodMatchers);
-		}
-
-		@Override
-		@Nullable
-		public Object proceed() throws Throwable {
-				return super.proceed();
 		}
 	}
 
