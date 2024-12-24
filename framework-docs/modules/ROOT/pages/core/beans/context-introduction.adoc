@@ -578,6 +578,8 @@ Kotlin::
 ----
 ======
 
+NOTE: Do not define such beans to be lazy as the `ApplicationContext` will honour that and will not register the method to listen to events.
+
 The method signature once again declares the event type to which it listens,
 but, this time, with a flexible name and without implementing a specific listener interface.
 The event type can also be narrowed through generics as long as the actual event type
@@ -883,11 +885,12 @@ for example, for processing all events asynchronously and/or for handling listen
 == Convenient Access to Low-level Resources
 
 For optimal usage and understanding of application contexts, you should familiarize
-yourself with Spring's `Resource` abstraction, as described in xref:web/webflux-webclient/client-builder.adoc#webflux-client-builder-reactor-resources[Resources].
+yourself with Spring's `Resource` abstraction, as described in
+xref:core/resources.adoc[Resources].
 
 An application context is a `ResourceLoader`, which can be used to load `Resource` objects.
 A `Resource` is essentially a more feature rich version of the JDK `java.net.URL` class.
-In fact, the implementations of the `Resource` wrap an instance of `java.net.URL`, where
+In fact, implementations of `Resource` wrap an instance of `java.net.URL`, where
 appropriate. A `Resource` can obtain low-level resources from almost any location in a
 transparent fashion, including from the classpath, a filesystem location, anywhere
 describable with a standard URL, and some other variations. If the resource location

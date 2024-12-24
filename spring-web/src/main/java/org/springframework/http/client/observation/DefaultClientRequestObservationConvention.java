@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 
 import io.micrometer.common.KeyValue;
 import io.micrometer.common.KeyValues;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -29,7 +30,6 @@ import org.springframework.http.client.ClientHttpRequest;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.observation.ClientHttpObservationDocumentation.HighCardinalityKeyNames;
 import org.springframework.http.client.observation.ClientHttpObservationDocumentation.LowCardinalityKeyNames;
-import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 
 /**
@@ -43,7 +43,7 @@ public class DefaultClientRequestObservationConvention implements ClientRequestO
 
 	private static final String DEFAULT_NAME = "http.client.requests";
 
-	private static final Pattern PATTERN_BEFORE_PATH = Pattern.compile("^https?://[^/]+/");
+	private static final Pattern PATTERN_BEFORE_PATH = Pattern.compile("^https?://[^/]+");
 
 	private static final KeyValue URI_NONE = KeyValue.of(LowCardinalityKeyNames.URI, KeyValue.NONE_VALUE);
 
@@ -87,8 +87,7 @@ public class DefaultClientRequestObservationConvention implements ClientRequestO
 	}
 
 	@Override
-	@Nullable
-	public String getContextualName(ClientRequestObservationContext context) {
+	public @Nullable String getContextualName(ClientRequestObservationContext context) {
 		ClientHttpRequest request = context.getCarrier();
 		return (request != null ? "http " + request.getMethod().name().toLowerCase(Locale.ROOT) : null);
 	}

@@ -26,6 +26,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.hamcrest.Matcher;
+import org.jspecify.annotations.Nullable;
 import org.reactivestreams.Publisher;
 
 import org.springframework.context.ApplicationContext;
@@ -39,7 +40,6 @@ import org.springframework.http.client.reactive.ClientHttpConnector;
 import org.springframework.http.client.reactive.ClientHttpRequest;
 import org.springframework.http.codec.ClientCodecConfigurer;
 import org.springframework.http.codec.ServerCodecConfigurer;
-import org.springframework.lang.Nullable;
 import org.springframework.test.json.JsonComparator;
 import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.json.JsonComparison;
@@ -1074,19 +1074,6 @@ public interface WebTestClient {
 		 * @since 6.2
 		 */
 		JsonPathAssertions jsonPath(String expression);
-
-		/**
-		 * Access to response body assertions using a
-		 * <a href="https://github.com/jayway/JsonPath">JsonPath</a> expression
-		 * to inspect a specific subset of the body.
-		 * <p>The JSON path expression can be a parameterized string using
-		 * formatting specifiers as defined in {@link String#format}.
-		 * @param expression the JsonPath expression
-		 * @param args arguments to parameterize the expression
-		 * @deprecated in favor of calling {@link String#formatted(Object...)} upfront
-		 */
-		@Deprecated(since = "6.2", forRemoval = true)
-		JsonPathAssertions jsonPath(String expression, Object... args);
 
 		/**
 		 * Access to response body assertions using an XPath expression to

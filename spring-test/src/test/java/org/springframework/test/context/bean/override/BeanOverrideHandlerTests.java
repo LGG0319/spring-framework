@@ -26,10 +26,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.function.Consumer;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.lang.Nullable;
 import org.springframework.test.context.bean.override.DummyBean.DummyBeanOverrideProcessor.DummyBeanOverrideHandler;
 import org.springframework.test.context.bean.override.example.CustomQualifier;
 import org.springframework.test.context.bean.override.example.ExampleService;
@@ -84,6 +84,14 @@ class BeanOverrideHandlerTests {
 				.isThrownBy(() -> BeanOverrideHandler.forTestClass(MultipleAnnotationsOnSameField.class))
 				.withMessageStartingWith("Multiple @BeanOverride annotations found")
 				.withMessageContaining(faultyField.toString());
+	}
+
+	@Test  // gh-33922
+	void forTestClassWithStaticBeanOverrideField() {
+		Field staticField = field(StaticBeanOverrideField.class, "message");
+		assertThatIllegalStateException()
+				.isThrownBy(() -> BeanOverrideHandler.forTestClass(StaticBeanOverrideField.class))
+				.withMessage("@BeanOverride field must not be static: " + staticField);
 	}
 
 	@Test
@@ -244,6 +252,12 @@ class BeanOverrideHandlerTests {
 		static String foo() {
 			return "foo";
 		}
+	}
+
+	static class StaticBeanOverrideField {
+
+		@DummyBean
+		static String message;
 	}
 
 	static class ConfigA {
