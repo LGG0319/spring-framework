@@ -25,7 +25,6 @@ import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
-import org.springframework.lang.Nullable
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.util.MultiValueMap
 import org.springframework.web.bind.annotation.*
@@ -255,29 +254,29 @@ class KotlinRestTemplateHttpServiceProxyTests {
 		@get:GetExchange("/test")
 		val request: String
 
-        @GetExchange("/test/{id}")
-        fun getRequestWithPathVariable(@PathVariable id: String): ResponseEntity<String>
+		@GetExchange("/test/{id}")
+		fun getRequestWithPathVariable(@PathVariable id: String): ResponseEntity<String>
 
-        @GetExchange("/test/{id}")
-        fun getRequestWithDynamicUri(@Nullable uri: URI, @PathVariable id: String): Optional<String>
+		@GetExchange("/test/{id}")
+		fun getRequestWithDynamicUri(uri: URI?, @PathVariable id: String): Optional<String>
 
-        @PostExchange("/test")
-        fun postRequestWithHeader(@RequestHeader("testHeaderName") testHeader: String,
-                                  @RequestBody requestBody: String)
+		@PostExchange("/test")
+		fun postRequestWithHeader(@RequestHeader("testHeaderName") testHeader: String,
+								  @RequestBody requestBody: String)
 
-        @PostExchange(contentType = "application/x-www-form-urlencoded")
-        fun postForm(@RequestParam params: MultiValueMap<String, String>)
+		@PostExchange(contentType = "application/x-www-form-urlencoded")
+		fun postForm(@RequestParam params: MultiValueMap<String, String>)
 
-        @PostExchange
-        fun postMultipart(file: MultipartFile, @RequestPart anotherPart: String)
+		@PostExchange
+		fun postMultipart(file: MultipartFile, @RequestPart anotherPart: String)
 
-        @PutExchange
-        fun putRequestWithCookies(@CookieValue firstCookie: String,
-                                  @CookieValue secondCookie: String)
+		@PutExchange
+		fun putRequestWithCookies(@CookieValue firstCookie: String,
+								  @CookieValue secondCookie: String)
 
-        @PutExchange
-        fun putRequestWithSameNameCookies(@CookieValue("testCookie") firstCookie: String,
-                                          @CookieValue("testCookie") secondCookie: String)
+		@PutExchange
+		fun putRequestWithSameNameCookies(@CookieValue("testCookie") firstCookie: String,
+										  @CookieValue("testCookie") secondCookie: String)
 
 		@GetExchange("/greeting")
 		fun getWithUriBuilderFactory(uriBuilderFactory: UriBuilderFactory?): ResponseEntity<String>
@@ -288,6 +287,6 @@ class KotlinRestTemplateHttpServiceProxyTests {
 
 		@GetExchange("/greeting")
 		fun getWithIgnoredUriBuilderFactory(uri: URI?, uriBuilderFactory: UriBuilderFactory?): ResponseEntity<String>
-    }
+	}
 
 }

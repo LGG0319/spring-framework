@@ -39,6 +39,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import jakarta.annotation.Priority;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.BeansException;
@@ -87,7 +88,6 @@ import org.springframework.core.convert.support.GenericConversionService;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.core.testfixture.io.SerializationTestUtils;
-import org.springframework.lang.Nullable;
 import org.springframework.util.StringValueResolver;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -870,10 +870,15 @@ class DefaultListableBeanFactoryTests {
 	void beanDefinitionOverriding() {
 		lbf.setAllowBeanDefinitionOverriding(true);
 		lbf.registerBeanDefinition("test", new RootBeanDefinition(TestBean.class));
+		// Override "test" bean definition.
 		lbf.registerBeanDefinition("test", new RootBeanDefinition(NestedTestBean.class));
+		// Temporary "test2" alias for nonexistent bean.
 		lbf.registerAlias("otherTest", "test2");
+		// Reassign "test2" alias to "test".
 		lbf.registerAlias("test", "test2");
+		// Assign "testX" alias to "test" as well.
 		lbf.registerAlias("test", "testX");
+		// Register new "testX" bean definition which also removes the "testX" alias for "test".
 		lbf.registerBeanDefinition("testX", new RootBeanDefinition(TestBean.class));
 
 		assertThat(lbf.getBean("test")).isInstanceOf(NestedTestBean.class);

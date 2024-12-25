@@ -21,9 +21,11 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Objects;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.core.ResolvableType;
-import org.springframework.lang.Nullable;
+import org.springframework.core.style.ToStringCreator;
 import org.springframework.test.context.bean.override.BeanOverrideHandler;
 import org.springframework.test.context.bean.override.BeanOverrideStrategy;
 import org.springframework.util.ReflectionUtils;
@@ -81,6 +83,17 @@ final class TestBeanOverrideHandler extends BeanOverrideHandler {
 	@Override
 	public int hashCode() {
 		return this.factoryMethod.hashCode() * 29 + super.hashCode();
+	}
+
+	@Override
+	public String toString() {
+		return new ToStringCreator(this)
+				.append("field", getField())
+				.append("beanType", getBeanType())
+				.append("beanName", getBeanName())
+				.append("strategy", getStrategy())
+				.append("factoryMethod", this.factoryMethod)
+				.toString();
 	}
 
 }

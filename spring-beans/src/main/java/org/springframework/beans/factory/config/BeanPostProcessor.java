@@ -16,8 +16,9 @@
 
 package org.springframework.beans.factory.config;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.beans.BeansException;
-import org.springframework.lang.Nullable;
 
 /**
  * Factory hook that allows for custom modification of new bean instances &mdash;
@@ -73,8 +74,7 @@ public interface BeanPostProcessor {
 	 * bean初始化回调（如InitializingBean的afterPropertiesSet方法或者自定义的init-method）之前被调用。
 	 * 也就是说，这个方法会在bean的属性已经设置完毕，但还未进行初始化时被调用。
 	 */
-	@Nullable
-	default Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+	default @Nullable Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
 		return bean;
 	}
 
@@ -101,8 +101,7 @@ public interface BeanPostProcessor {
 	 * bean初始化回调（比如InitializingBean的afterPropertiesSet或者自定义的初始化方法）之后被调用。
      * 这个时候，bean的属性值已经被填充完毕。返回的bean实例可能是原始bean的一个包装。
 	 */
-	@Nullable
-	default Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+	default @Nullable Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
 		return bean;
 	}
 

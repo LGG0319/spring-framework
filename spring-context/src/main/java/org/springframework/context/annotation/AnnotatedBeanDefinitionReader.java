@@ -19,6 +19,8 @@ package org.springframework.context.annotation;
 import java.lang.annotation.Annotation;
 import java.util.function.Supplier;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.beans.factory.annotation.AnnotatedGenericBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionCustomizer;
@@ -30,7 +32,6 @@ import org.springframework.beans.factory.support.BeanNameGenerator;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.EnvironmentCapable;
 import org.springframework.core.env.StandardEnvironment;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -258,8 +259,8 @@ public class AnnotatedBeanDefinitionReader {
 	 * 解析class成BeanDefinition然后保存BeanDefinition
 	 */
 	private <T> void doRegisterBean(Class<T> beanClass, @Nullable String name,
-			@Nullable Class<? extends Annotation>[] qualifiers, @Nullable Supplier<T> supplier,
-			@Nullable BeanDefinitionCustomizer[] customizers) {
+			Class<? extends Annotation> @Nullable [] qualifiers, @Nullable Supplier<T> supplier,
+			BeanDefinitionCustomizer @Nullable [] customizers) {
 
 		// 根据传入配置信息（配置类）判断是否需要解析class为BeanDefinition,不需要则跳过（是否满足@Conditional注解要求）
 		// true : 1. @Component、@ComponentScan、@Import、@ImportResource与@Conditional联用，且@Conditional条件不满足

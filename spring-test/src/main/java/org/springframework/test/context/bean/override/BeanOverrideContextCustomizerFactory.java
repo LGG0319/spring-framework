@@ -16,14 +16,16 @@
 
 package org.springframework.test.context.bean.override;
 
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.test.context.ContextConfigurationAttributes;
 import org.springframework.test.context.ContextCustomizerFactory;
 import org.springframework.test.context.TestContextAnnotationUtils;
+import org.springframework.util.Assert;
 
 /**
  * {@link ContextCustomizerFactory} implementation that provides support for
@@ -38,23 +40,25 @@ import org.springframework.test.context.TestContextAnnotationUtils;
 class BeanOverrideContextCustomizerFactory implements ContextCustomizerFactory {
 
 	@Override
-	@Nullable
-	public BeanOverrideContextCustomizer createContextCustomizer(Class<?> testClass,
+	public @Nullable BeanOverrideContextCustomizer createContextCustomizer(Class<?> testClass,
 			List<ContextConfigurationAttributes> configAttributes) {
 
-		Set<BeanOverrideHandler> handlers = new HashSet<>();
-		findBeanOverrideHandler(testClass, handlers);
+		Set<BeanOverrideHandler> handlers = new LinkedHashSet<>();
+		findBeanOverrideHandlers(testClass, handlers);
 		if (handlers.isEmpty()) {
 			return null;
 		}
 		return new BeanOverrideContextCustomizer(handlers);
 	}
 
-	private void findBeanOverrideHandler(Class<?> testClass, Set<BeanOverrideHandler> handlers) {
-		handlers.addAll(BeanOverrideHandler.forTestClass(testClass));
+	private void findBeanOverrideHandlers(Class<?> testClass, Set<BeanOverrideHandler> handlers) {
 		if (TestContextAnnotationUtils.searchEnclosingClass(testClass)) {
-			findBeanOverrideHandler(testClass.getEnclosingClass(), handlers);
+			findBeanOverrideHandlers(testClass.getEnclosingClass(), handlers);
 		}
+		BeanOverrideHandler.forTestClass(testClass).forEach(handler ->
+				Assert.state(handlers.add(handler), () ->
+						"Duplicate BeanOverrideHandler discovered in test class %s: %s"
+							.formatted(testClass.getName(), handler)));
 	}
 
 }

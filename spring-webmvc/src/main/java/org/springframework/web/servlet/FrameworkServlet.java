@@ -31,6 +31,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpServletResponseWrapper;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.context.ApplicationContext;
@@ -50,7 +51,6 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatusCode;
-import org.springframework.lang.Nullable;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
@@ -178,31 +178,26 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 
 
 	/** ServletContext attribute to find the WebApplicationContext in. */
-	@Nullable
-	private String contextAttribute;
+	private @Nullable String contextAttribute;
 
 	/** WebApplicationContext implementation class to create. */
 	private Class<?> contextClass = DEFAULT_CONTEXT_CLASS;
 
 	/** WebApplicationContext id to assign. */
-	@Nullable
-	private String contextId;
+	private @Nullable String contextId;
 
 	/** Namespace for this servlet. */
-	@Nullable
-	private String namespace;
+	private @Nullable String namespace;
 
 	/** Explicit context config location. */
-	@Nullable
-	private String contextConfigLocation;
+	private @Nullable String contextConfigLocation;
 
 	/** Actual ApplicationContextInitializer instances to apply to the context. */
 	private final List<ApplicationContextInitializer<ConfigurableApplicationContext>> contextInitializers =
 			new ArrayList<>();
 
 	/** Comma-delimited ApplicationContextInitializer class names set through init param. */
-	@Nullable
-	private String contextInitializerClasses;
+	private @Nullable String contextInitializerClasses;
 
 	/** Should we publish the context as a ServletContext attribute?. */
 	private boolean publishContext = true;
@@ -223,8 +218,7 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 	private boolean enableLoggingRequestDetails = false;
 
 	/** WebApplicationContext for this servlet. */
-	@Nullable
-	private WebApplicationContext webApplicationContext;
+	private @Nullable WebApplicationContext webApplicationContext;
 
 	/** If the WebApplicationContext was injected via {@link #setApplicationContext}. */
 	private boolean webApplicationContextInjected = false;
@@ -313,8 +307,7 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 	 * Return the name of the ServletContext attribute which should be used to retrieve the
 	 * {@link WebApplicationContext} that this servlet is supposed to use.
 	 */
-	@Nullable
-	public String getContextAttribute() {
+	public @Nullable String getContextAttribute() {
 		return this.contextAttribute;
 	}
 
@@ -349,8 +342,7 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 	/**
 	 * Return the custom WebApplicationContext id, if any.
 	 */
-	@Nullable
-	public String getContextId() {
+	public @Nullable String getContextId() {
 		return this.contextId;
 	}
 
@@ -382,8 +374,7 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 	/**
 	 * Return the explicit context config location, if any.
 	 */
-	@Nullable
-	public String getContextConfigLocation() {
+	public @Nullable String getContextConfigLocation() {
 		return this.contextConfigLocation;
 	}
 
@@ -394,7 +385,7 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 	 * @see #applyInitializers
 	 */
 	@SuppressWarnings("unchecked")
-	public void setContextInitializers(@Nullable ApplicationContextInitializer<?>... initializers) {
+	public void setContextInitializers(ApplicationContextInitializer<?> @Nullable ... initializers) {
 		if (initializers != null) {
 			for (ApplicationContextInitializer<?> initializer : initializers) {
 				this.contextInitializers.add((ApplicationContextInitializer<ConfigurableApplicationContext>) initializer);
@@ -625,8 +616,7 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 	 * @return the WebApplicationContext for this servlet, or {@code null} if not found
 	 * @see #getContextAttribute()
 	 */
-	@Nullable
-	protected WebApplicationContext findWebApplicationContext() {
+	protected @Nullable WebApplicationContext findWebApplicationContext() {
 		String attrName = getContextAttribute();
 		if (attrName == null) {
 			return null;
@@ -807,8 +797,7 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 	/**
 	 * Return this servlet's WebApplicationContext.
 	 */
-	@Nullable
-	public final WebApplicationContext getWebApplicationContext() {
+	public final @Nullable WebApplicationContext getWebApplicationContext() {
 		return this.webApplicationContext;
 	}
 
@@ -1045,8 +1034,7 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 	 * @return the corresponding LocaleContext, or {@code null} if none to bind
 	 * @see LocaleContextHolder#setLocaleContext
 	 */
-	@Nullable
-	protected LocaleContext buildLocaleContext(HttpServletRequest request) {
+	protected @Nullable LocaleContext buildLocaleContext(HttpServletRequest request) {
 		return new SimpleLocaleContext(request.getLocale());
 	}
 
@@ -1061,8 +1049,7 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 	 * the previously bound instance (or not binding any, if none bound before)
 	 * @see RequestContextHolder#setRequestAttributes
 	 */
-	@Nullable
-	protected ServletRequestAttributes buildRequestAttributes(HttpServletRequest request,
+	protected @Nullable ServletRequestAttributes buildRequestAttributes(HttpServletRequest request,
 			@Nullable HttpServletResponse response, @Nullable RequestAttributes previousAttributes) {
 
 		if (previousAttributes == null || previousAttributes instanceof ServletRequestAttributes) {
@@ -1168,8 +1155,7 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 	 * @return the username, or {@code null} if none found
 	 * @see jakarta.servlet.http.HttpServletRequest#getUserPrincipal()
 	 */
-	@Nullable
-	protected String getUsernameForRequest(HttpServletRequest request) {
+	protected @Nullable String getUsernameForRequest(HttpServletRequest request) {
 		Principal userPrincipal = request.getUserPrincipal();
 		return (userPrincipal != null ? userPrincipal.getName() : null);
 	}

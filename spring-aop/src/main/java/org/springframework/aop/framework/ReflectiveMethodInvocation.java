@@ -24,11 +24,11 @@ import java.util.Map;
 
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.aop.ProxyMethodInvocation;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.core.BridgeMethodResolver;
-import org.springframework.lang.Nullable;
 
 /**
  * Spring's implementation of the AOP Alliance
@@ -63,21 +63,18 @@ public class ReflectiveMethodInvocation implements ProxyMethodInvocation, Clonea
 
 	protected final Object proxy;
 
-	@Nullable
-	protected final Object target;
+	protected final @Nullable Object target;
 
 	protected final Method method;
 
 	protected Object[] arguments;
 
-	@Nullable
-	private final Class<?> targetClass;
+	private final @Nullable Class<?> targetClass;
 
 	/**
 	 * Lazily initialized map of user-specific attributes for this invocation.
 	 */
-	@Nullable
-	private Map<String, Object> userAttributes;
+	private @Nullable Map<String, Object> userAttributes;
 
 	/**
 	 * List of MethodInterceptor and InterceptorAndDynamicMethodMatcher
@@ -106,7 +103,7 @@ public class ReflectiveMethodInvocation implements ProxyMethodInvocation, Clonea
 	 * but would complicate the code. And it would work only for static pointcuts.
 	 */
 	protected ReflectiveMethodInvocation(
-			Object proxy, @Nullable Object target, Method method, @Nullable Object[] arguments,
+			Object proxy, @Nullable Object target, Method method, Object @Nullable [] arguments,
 			@Nullable Class<?> targetClass, List<Object> interceptorsAndDynamicMethodMatchers) {
 
 		this.proxy = proxy;
@@ -124,8 +121,7 @@ public class ReflectiveMethodInvocation implements ProxyMethodInvocation, Clonea
 	}
 
 	@Override
-	@Nullable
-	public final Object getThis() {
+	public final @Nullable Object getThis() {
 		return this.target;
 	}
 
@@ -156,14 +152,12 @@ public class ReflectiveMethodInvocation implements ProxyMethodInvocation, Clonea
 
 
 	@Override
-	@Nullable
-	public Object proceed() throws Throwable {
-		// We start with an index of -1 and increment early.  数组对象 interceptorsAndDynamicMethodMatchers
+	public @Nullable Object proceed() throws Throwable {
+		// We start with an index of -1 and increment early.
 		if (this.currentInterceptorIndex == this.interceptorsAndDynamicMethodMatchers.size() - 1) {
-			// 退出递归  2.执行事务通知后，开始调用具体的方法代码
 			return invokeJoinpoint();
 		}
-		// 递归执行责任链
+
 		Object interceptorOrInterceptionAdvice =
 				this.interceptorsAndDynamicMethodMatchers.get(++this.currentInterceptorIndex);
 		if (interceptorOrInterceptionAdvice instanceof InterceptorAndDynamicMethodMatcher dm) {
@@ -182,7 +176,6 @@ public class ReflectiveMethodInvocation implements ProxyMethodInvocation, Clonea
 		else {
 			// It's an interceptor, so we just invoke it: The pointcut will have
 			// been evaluated statically before this object was constructed.
-			//  1.先执行事务通知类的逻辑     责任链执行
 			return ((MethodInterceptor) interceptorOrInterceptionAdvice).invoke(this);
 		}
 	}
@@ -193,8 +186,7 @@ public class ReflectiveMethodInvocation implements ProxyMethodInvocation, Clonea
 	 * @return the return value of the joinpoint
 	 * @throws Throwable if invoking the joinpoint resulted in an exception
 	 */
-	@Nullable
-	protected Object invokeJoinpoint() throws Throwable {
+	protected @Nullable Object invokeJoinpoint() throws Throwable {
 		return AopUtils.invokeJoinpointUsingReflection(this.target, this.method, this.arguments);
 	}
 
@@ -262,8 +254,7 @@ public class ReflectiveMethodInvocation implements ProxyMethodInvocation, Clonea
 	}
 
 	@Override
-	@Nullable
-	public Object getUserAttribute(String key) {
+	public @Nullable Object getUserAttribute(String key) {
 		return (this.userAttributes != null ? this.userAttributes.get(key) : null);
 	}
 

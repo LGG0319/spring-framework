@@ -37,6 +37,7 @@ import java.util.function.Predicate;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.factory.BeanDefinitionStoreException;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
@@ -69,7 +70,6 @@ import org.springframework.core.type.StandardAnnotationMetadata;
 import org.springframework.core.type.classreading.MetadataReader;
 import org.springframework.core.type.classreading.MetadataReaderFactory;
 import org.springframework.core.type.filter.AssignableTypeFilter;
-import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
@@ -122,8 +122,7 @@ class ConfigurationClassParser {
 
 	private final ResourceLoader resourceLoader;
 
-	@Nullable
-	private final PropertySourceRegistry propertySourceRegistry;
+	private final @Nullable PropertySourceRegistry propertySourceRegistry;
 
 	private final BeanDefinitionRegistry registry;
 
@@ -288,8 +287,7 @@ class ConfigurationClassParser {
 	 * @return the superclass, or {@code null} if none found or previously processed
 	 * 解析配置类上各种注解
 	 */
-	@Nullable
-	protected final SourceClass doProcessConfigurationClass(
+	protected final @Nullable SourceClass doProcessConfigurationClass(
 			ConfigurationClass configClass, SourceClass sourceClass, Predicate<String> filter)
 			throws IOException {
 
@@ -738,8 +736,7 @@ class ConfigurationClassParser {
 		return allConditions.stream().filter(REGISTER_BEAN_CONDITION_FILTER).toList();
 	}
 
-	@Nullable
-	private ConfigurationClass getEnclosingConfigurationClass(ConfigurationClass configurationClass) {
+	private @Nullable ConfigurationClass getEnclosingConfigurationClass(ConfigurationClass configurationClass) {
 		String enclosingClassName = configurationClass.getMetadata().getEnclosingClassName();
 		if (enclosingClassName != null) {
 			return configurationClass.getImportedBy().stream()
@@ -760,8 +757,7 @@ class ConfigurationClassParser {
 		}
 
 		@Override
-		@Nullable
-		public AnnotationMetadata getImportingClassFor(String importedClass) {
+		public @Nullable AnnotationMetadata getImportingClassFor(String importedClass) {
 			return CollectionUtils.lastElement(this.imports.get(importedClass));
 		}
 
@@ -800,8 +796,7 @@ class ConfigurationClassParser {
 
 	private class DeferredImportSelectorHandler {
 
-		@Nullable
-		private List<DeferredImportSelectorHolder> deferredImportSelectors = new ArrayList<>();
+		private @Nullable List<DeferredImportSelectorHolder> deferredImportSelectors = new ArrayList<>();
 
 		/**
 		 * Handle the specified {@link DeferredImportSelector}. If deferred import
