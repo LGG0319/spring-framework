@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2023 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -375,7 +375,7 @@ public class SpringFactoriesLoader {
 
 		T instantiate(@Nullable ArgumentResolver argumentResolver) throws Exception {
 			Object[] args = resolveArgs(argumentResolver);
-			if (isKotlinType(this.constructor.getDeclaringClass())) {
+			if (KotlinDetector.isKotlinType(this.constructor.getDeclaringClass())) {
 				return KotlinDelegate.instantiate(this.constructor, args);
 			}
 			return this.constructor.newInstance(args);
@@ -409,12 +409,8 @@ public class SpringFactoriesLoader {
 		}
 
 		private static @Nullable Constructor<?> findPrimaryKotlinConstructor(Class<?> factoryImplementationClass) {
-			return (isKotlinType(factoryImplementationClass) ?
+			return (KotlinDetector.isKotlinType(factoryImplementationClass) ?
 					KotlinDelegate.findPrimaryConstructor(factoryImplementationClass) : null);
-		}
-
-		private static boolean isKotlinType(Class<?> factoryImplementationClass) {
-			return KotlinDetector.isKotlinReflectPresent() && KotlinDetector.isKotlinType(factoryImplementationClass);
 		}
 
 		private static @Nullable Constructor<?> findSingleConstructor(Constructor<?>[] constructors) {
@@ -587,11 +583,11 @@ public class SpringFactoriesLoader {
 		 * @param function the resolver function
 		 * @return a new {@link ArgumentResolver} instance backed by the function
 		 */
-		static ArgumentResolver from(Function<Class<?>, Object> function) {
+		static ArgumentResolver from(Function<Class<?>, @Nullable Object> function) {
 			return new ArgumentResolver() {
 				@SuppressWarnings("unchecked")
 				@Override
-				public <T> T resolve(Class<T> type) {
+				public <T> @Nullable T resolve(Class<T> type) {
 					return (T) function.apply(type);
 				}
 			};

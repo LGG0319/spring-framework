@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2021 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -134,18 +134,6 @@ public interface ClientRequest {
 	}
 
 	/**
-	 * Create a builder with the given HTTP method and url.
-	 * @param method the HTTP method (GET, POST, etc)
-	 * @param url the url (as a URI instance)
-	 * @return the created builder
-	 * @deprecated in favor of {@link #create(HttpMethod, URI)}
-	 */
-	@Deprecated
-	static Builder method(HttpMethod method, URI url) {
-		return new DefaultClientRequestBuilder(method, url);
-	}
-
-	/**
 	 * Create a request builder with the given HTTP method and url.
 	 * @param method the HTTP method (GET, POST, etc)
 	 * @param url the url (as a URI instance)
@@ -190,7 +178,7 @@ public interface ClientRequest {
 		 * Manipulate this request's headers with the given consumer. The
 		 * headers provided to the consumer are "live", so that the consumer can be used to
 		 * {@linkplain HttpHeaders#set(String, String) overwrite} existing header values,
-		 * {@linkplain HttpHeaders#remove(Object) remove} values, or use any of the other
+		 * {@linkplain HttpHeaders#remove(String) remove} values, or use any of the other
 		 * {@link HttpHeaders} methods.
 		 * @param headersConsumer a function that consumes the {@code HttpHeaders}
 		 * @return this builder

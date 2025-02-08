@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import java.nio.charset.Charset;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -385,6 +386,15 @@ public interface RestClient {
 		Builder requestInterceptors(Consumer<List<ClientHttpRequestInterceptor>> interceptorsConsumer);
 
 		/**
+		 * Enable buffering of request and response, aggregating all content before
+		 * it is sent, and making it possible to read the response body repeatedly.
+		 * @param predicate to determine whether to buffer for the given request
+		 * @return this builder
+		 * @since 7.0
+		 */
+		Builder bufferContent(BiPredicate<URI, HttpMethod> predicate);
+
+		/**
 		 * Add the given request initializer to the end of the initializer chain.
 		 * @param initializer the initializer to be added to the chain
 		 * @return this builder
@@ -493,14 +503,14 @@ public interface RestClient {
 		 * <p>If a {@link UriBuilderFactory} was configured for the client (for example,
 		 * with a base URI) it will be used to expand the URI template.
 		 */
-		S uri(String uri, Object... uriVariables);
+		S uri(String uri, @Nullable Object... uriVariables);
 
 		/**
 		 * Specify the URI for the request using a URI template and URI variables.
 		 * <p>If a {@link UriBuilderFactory} was configured for the client (for example,
 		 * with a base URI) it will be used to expand the URI template.
 		 */
-		S uri(String uri, Map<String, ?> uriVariables);
+		S uri(String uri, Map<String, ? extends @Nullable Object> uriVariables);
 
 		/**
 		 * Specify the URI starting with a URI template and finishing off with a

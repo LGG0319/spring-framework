@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -131,7 +131,7 @@ class ConstructorResolver {
 	 * or {@code null} if none (-> use constructor argument values from bean definition)
 	 * @return a BeanWrapper for the new instance
 	 */
-	@SuppressWarnings("NullAway")
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	public BeanWrapper autowireConstructor(String beanName, RootBeanDefinition mbd,
 			Constructor<?> @Nullable [] chosenCtors, @Nullable Object @Nullable [] explicitArgs) {
 
@@ -140,7 +140,7 @@ class ConstructorResolver {
 
 		Constructor<?> constructorToUse = null;
 		ArgumentsHolder argsHolderToUse = null;
-		Object[] argsToUse = null;
+		@Nullable Object[] argsToUse = null;
 
 		if (explicitArgs != null) {
 			argsToUse = explicitArgs;
@@ -227,7 +227,7 @@ class ConstructorResolver {
 				Class<?>[] paramTypes = candidate.getParameterTypes();
 				if (resolvedValues != null) {
 					try {
-						String[] paramNames = null;
+						@Nullable String[] paramNames = null;
 						if (resolvedValues.containsNamedArgument()) {
 							paramNames = ConstructorPropertiesChecker.evaluate(candidate, parameterCount);
 							if (paramNames == null) {
@@ -393,7 +393,7 @@ class ConstructorResolver {
 	 * method, or {@code null} if none (-> use constructor argument values from bean definition)
 	 * @return a BeanWrapper for the new instance
 	 */
-	@SuppressWarnings("NullAway")
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	public BeanWrapper instantiateUsingFactoryMethod(
 			String beanName, RootBeanDefinition mbd, @Nullable Object @Nullable [] explicitArgs) {
 
@@ -437,7 +437,7 @@ class ConstructorResolver {
 			argsToUse = explicitArgs;
 		}
 		else {
-			Object[] argsToResolve = null;
+			@Nullable Object[] argsToResolve = null;
 			synchronized (mbd.constructorArgumentLock) {
 				factoryMethodToUse = (Method) mbd.resolvedConstructorOrFactoryMethod;
 				if (factoryMethodToUse != null && mbd.constructorArgumentsResolved) {
@@ -536,7 +536,7 @@ class ConstructorResolver {
 					else {
 						// Resolved constructor arguments: type conversion and/or autowiring necessary.
 						try {
-							String[] paramNames = null;
+							@Nullable String[] paramNames = null;
 							if (resolvedValues != null && resolvedValues.containsNamedArgument()) {
 								ParameterNameDiscoverer pnd = this.beanFactory.getParameterNameDiscoverer();
 								if (pnd != null) {
@@ -624,7 +624,7 @@ class ConstructorResolver {
 						"Invalid factory method '" + mbd.getFactoryMethodName() + "' on class [" +
 						factoryClass.getName() + "]: needs to have a non-void return type!");
 			}
-			else if (KotlinDetector.isKotlinPresent() && KotlinDetector.isSuspendingFunction(factoryMethodToUse)) {
+			else if (KotlinDetector.isSuspendingFunction(factoryMethodToUse)) {
 				throw new BeanCreationException(mbd.getResourceDescription(), beanName,
 						"Invalid factory method '" + mbd.getFactoryMethodName() + "' on class [" +
 								factoryClass.getName() + "]: suspending functions are not supported!");
@@ -719,7 +719,7 @@ class ConstructorResolver {
 	 */
 	private ArgumentsHolder createArgumentArray(
 			String beanName, RootBeanDefinition mbd, @Nullable ConstructorArgumentValues resolvedValues,
-			BeanWrapper bw, Class<?>[] paramTypes, String @Nullable [] paramNames, Executable executable,
+			BeanWrapper bw, Class<?>[] paramTypes, @Nullable String @Nullable [] paramNames, Executable executable,
 			boolean autowiring, boolean fallback) throws UnsatisfiedDependencyException {
 
 		TypeConverter customConverter = this.beanFactory.getCustomTypeConverter();
@@ -814,7 +814,7 @@ class ConstructorResolver {
 	/**
 	 * Resolve the prepared arguments stored in the given bean definition.
 	 */
-	private Object[] resolvePreparedArguments(String beanName, RootBeanDefinition mbd, BeanWrapper bw,
+	private @Nullable Object[] resolvePreparedArguments(String beanName, RootBeanDefinition mbd, BeanWrapper bw,
 			Executable executable, Object[] argsToResolve) {
 
 		TypeConverter customConverter = this.beanFactory.getCustomTypeConverter();
@@ -823,7 +823,7 @@ class ConstructorResolver {
 				new BeanDefinitionValueResolver(this.beanFactory, beanName, mbd, converter);
 		Class<?>[] paramTypes = executable.getParameterTypes();
 
-		Object[] resolvedArgs = new Object[argsToResolve.length];
+		@Nullable Object[] resolvedArgs = new Object[argsToResolve.length];
 		for (int argIndex = 0; argIndex < argsToResolve.length; argIndex++) {
 			Object argValue = argsToResolve[argIndex];
 			Class<?> paramType = paramTypes[argIndex];

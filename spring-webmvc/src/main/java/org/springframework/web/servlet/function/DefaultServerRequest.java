@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -122,12 +122,6 @@ class DefaultServerRequest implements ServerRequest {
 	@Override
 	public HttpMethod method() {
 		return HttpMethod.valueOf(servletRequest().getMethod());
-	}
-
-	@Override
-	@Deprecated
-	public String methodName() {
-		return servletRequest().getMethod();
 	}
 
 	@Override
@@ -606,7 +600,7 @@ class DefaultServerRequest implements ServerRequest {
 
 		@Override
 		public boolean containsHeader(String name) {
-			return this.headers.containsKey(name);
+			return this.headers.containsHeader(name);
 		}
 
 		@Override
@@ -647,7 +641,7 @@ class DefaultServerRequest implements ServerRequest {
 
 		@Override
 		public Collection<String> getHeaderNames() {
-			return this.headers.keySet();
+			return this.headers.headerNames();
 		}
 
 

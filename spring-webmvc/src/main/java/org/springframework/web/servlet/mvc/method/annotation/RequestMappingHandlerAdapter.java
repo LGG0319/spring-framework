@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,7 +72,6 @@ import org.springframework.web.bind.support.WebBindingInitializer;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.context.request.ServletWebRequest;
-import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.context.request.async.AsyncWebRequest;
 import org.springframework.web.context.request.async.CallableProcessingInterceptor;
 import org.springframework.web.context.request.async.DeferredResultProcessingInterceptor;
@@ -181,8 +180,6 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 	private DeferredResultProcessingInterceptor[] deferredResultInterceptors = new DeferredResultProcessingInterceptor[0];
 
 	private ReactiveAdapterRegistry reactiveAdapterRegistry = ReactiveAdapterRegistry.getSharedInstance();
-
-	private boolean ignoreDefaultModelOnRedirect = true;
 
 	private int cacheSecondsForSessionAttributeHandlers = 0;
 
@@ -466,26 +463,6 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 	 */
 	public ReactiveAdapterRegistry getReactiveAdapterRegistry() {
 		return this.reactiveAdapterRegistry;
-	}
-
-	/**
-	 * By default, the content of the "default" model is used both during
-	 * rendering and redirect scenarios. Alternatively a controller method
-	 * can declare a {@link RedirectAttributes} argument and use it to provide
-	 * attributes for a redirect.
-	 * <p>Setting this flag to {@code true} guarantees the "default" model is
-	 * never used in a redirect scenario even if a RedirectAttributes argument
-	 * is not declared. Setting it to {@code false} means the "default" model
-	 * may be used in a redirect if the controller method doesn't declare a
-	 * RedirectAttributes argument.
-	 * <p>As of 6.0, this property is set to {@code true} by default.
-	 * @see RedirectAttributes
-	 * @deprecated as of 6.0 without a replacement; once removed, the default
-	 * model will always be ignored on redirect
-	 */
-	@Deprecated(since = "6.0")
-	public void setIgnoreDefaultModelOnRedirect(boolean ignoreDefaultModelOnRedirect) {
-		this.ignoreDefaultModelOnRedirect = ignoreDefaultModelOnRedirect;
 	}
 
 	/**
@@ -883,17 +860,6 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 		return mav;
 	}
 
-	/**
-	 * This implementation always returns -1. An {@code @RequestMapping} method can
-	 * calculate the lastModified value, call {@link WebRequest#checkNotModified(long)},
-	 * and return {@code null} if the result of that call is {@code true}.
-	 */
-	@Override
-	@SuppressWarnings("deprecation")
-	protected long getLastModifiedInternal(HttpServletRequest request, HandlerMethod handlerMethod) {
-		return -1;
-	}
-
 
 	/**
 	 * Return the {@link SessionAttributesHandler} instance for the given handler type
@@ -911,7 +877,6 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 	 * @since 4.2
 	 * @see #createInvocableHandlerMethod(HandlerMethod)
 	 */
-	@SuppressWarnings("deprecation")
 	protected @Nullable ModelAndView invokeHandlerMethod(HttpServletRequest request,
 			HttpServletResponse response, HandlerMethod handlerMethod) throws Exception {
 
@@ -947,7 +912,6 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 		ModelAndViewContainer mavContainer = new ModelAndViewContainer();
 		mavContainer.addAllAttributes(RequestContextUtils.getInputFlashMap(request));
 		modelFactory.initModel(webRequest, mavContainer, invocableMethod);
-		mavContainer.setIgnoreDefaultModelOnRedirect(this.ignoreDefaultModelOnRedirect);
 
 		if (asyncManager.hasConcurrentResult()) {
 			Object result = asyncManager.getConcurrentResult();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -178,7 +178,8 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 
 	private ApplicationStartup applicationStartup = ApplicationStartup.DEFAULT;
 
-	private @Nullable List<PropertySourceDescriptor> propertySourceDescriptors;
+	@SuppressWarnings("NullAway.Init")
+	private List<PropertySourceDescriptor> propertySourceDescriptors;
 
 
 	@Override
@@ -320,7 +321,6 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 	}
 
 	@Override
-	@SuppressWarnings("NullAway")
 	public @Nullable BeanFactoryInitializationAotContribution processAheadOfTime(ConfigurableListableBeanFactory beanFactory) {
 		boolean hasPropertySourceDescriptors = !CollectionUtils.isEmpty(this.propertySourceDescriptors);
 		boolean hasImportRegistry = beanFactory.containsBean(IMPORT_REGISTRY_BEAN_NAME);
@@ -683,9 +683,9 @@ public class ConfigurationClassPostProcessor implements BeanDefinitionRegistryPo
 
 		private final List<PropertySourceDescriptor> descriptors;
 
-		private final Function<String, Resource> resourceResolver;
+		private final Function<String, @Nullable Resource> resourceResolver;
 
-		PropertySourcesAotContribution(List<PropertySourceDescriptor> descriptors, Function<String, Resource> resourceResolver) {
+		PropertySourcesAotContribution(List<PropertySourceDescriptor> descriptors, Function<String, @Nullable Resource> resourceResolver) {
 			this.descriptors = descriptors;
 			this.resourceResolver = resourceResolver;
 		}

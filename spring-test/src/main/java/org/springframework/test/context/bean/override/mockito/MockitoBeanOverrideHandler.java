@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,20 +57,24 @@ class MockitoBeanOverrideHandler extends AbstractMockitoBeanOverrideHandler {
 	private final boolean serializable;
 
 
-	MockitoBeanOverrideHandler(Field field, ResolvableType typeToMock, MockitoBean mockitoBean) {
+	MockitoBeanOverrideHandler(ResolvableType typeToMock, MockitoBean mockitoBean) {
+		this(null, typeToMock, mockitoBean);
+	}
+
+	MockitoBeanOverrideHandler(@Nullable Field field, ResolvableType typeToMock, MockitoBean mockitoBean) {
 		this(field, typeToMock, (!mockitoBean.name().isBlank() ? mockitoBean.name() : null),
 			(mockitoBean.enforceOverride() ? REPLACE : REPLACE_OR_CREATE),
 			mockitoBean.reset(), mockitoBean.extraInterfaces(), mockitoBean.answers(), mockitoBean.serializable());
 	}
 
-	private MockitoBeanOverrideHandler(Field field, ResolvableType typeToMock, @Nullable String beanName,
-			BeanOverrideStrategy strategy, MockReset reset, Class<?>[] extraInterfaces, @Nullable Answers answers,
+	private MockitoBeanOverrideHandler(@Nullable Field field, ResolvableType typeToMock, @Nullable String beanName,
+			BeanOverrideStrategy strategy, MockReset reset, Class<?>[] extraInterfaces, Answers answers,
 			boolean serializable) {
 
 		super(field, typeToMock, beanName, strategy, reset);
 		Assert.notNull(typeToMock, "'typeToMock' must not be null");
 		this.extraInterfaces = asClassSet(extraInterfaces);
-		this.answers = (answers != null ? answers : Answers.RETURNS_DEFAULTS);
+		this.answers = answers;
 		this.serializable = serializable;
 	}
 
@@ -109,7 +113,9 @@ class MockitoBeanOverrideHandler extends AbstractMockitoBeanOverrideHandler {
 	}
 
 	@Override
-	protected Object createOverrideInstance(String beanName, @Nullable BeanDefinition existingBeanDefinition, @Nullable Object existingBeanInstance) {
+	protected Object createOverrideInstance(String beanName,
+			@Nullable BeanDefinition existingBeanDefinition, @Nullable Object existingBeanInstance) {
+
 		return createMock(beanName);
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package org.springframework.core;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -388,38 +387,16 @@ public class MethodParameter {
 
 	/**
 	 * Return whether this method indicates a parameter which is not required:
-	 * either in the form of Java 8's {@link java.util.Optional}, any variant
-	 * of a parameter-level {@code Nullable} annotation (such as from JSpecify,
-	 * JSR-305 or Jakarta set of annotations), or a language-level nullable type
+	 * either in the form of Java 8's {@link java.util.Optional}, JSpecify annotations,
+	 * any variant of a parameter-level {@code @Nullable} annotation (such as from Spring,
+	 * JSR-305 or Jakarta set of annotations), a language-level nullable type
 	 * declaration or {@code Continuation} parameter in Kotlin.
 	 * @since 4.3
+	 * @see Nullness#forMethodParameter(MethodParameter)
 	 */
 	public boolean isOptional() {
-		return (getParameterType() == Optional.class || hasNullableAnnotation() ||
-				(KotlinDetector.isKotlinReflectPresent() &&
-						KotlinDetector.isKotlinType(getContainingClass()) &&
-						KotlinDelegate.isOptional(this)));
-	}
-
-	/**
-	 * Check whether this method parameter is annotated with any variant of a
-	 * {@code Nullable} annotation, for example, {@code org.springframework.lang.Nullable},
-	 * {@code org.jspecify.annotations.Nullable} or {@code jakarta.annotation.Nullable}.
-	 */
-	private boolean hasNullableAnnotation() {
-		for (Annotation ann : getParameterAnnotations()) {
-			if ("Nullable".equals(ann.annotationType().getSimpleName())) {
-				return true;
-			}
-		}
-		for (AnnotatedType annotatedType : this.executable.getAnnotatedParameterTypes()) {
-			for (Annotation ann : annotatedType.getAnnotations()) {
-				if ("Nullable".equals(ann.annotationType().getSimpleName())) {
-					return true;
-				}
-			}
-		}
-		return false;
+		return (getParameterType() == Optional.class || Nullness.forMethodParameter(this) == Nullness.NULLABLE ||
+				(KotlinDetector.isKotlinType(getContainingClass()) && KotlinDelegate.isOptional(this)));
 	}
 
 	/**
@@ -507,8 +484,8 @@ public class MethodParameter {
 			if (this.parameterIndex < 0) {
 				Method method = getMethod();
 				paramType = (method != null ?
-						(KotlinDetector.isKotlinReflectPresent() && KotlinDetector.isKotlinType(getContainingClass()) ?
-						KotlinDelegate.getGenericReturnType(method) : method.getGenericReturnType()) : void.class);
+						(KotlinDetector.isKotlinType(getContainingClass()) ?
+								KotlinDelegate.getGenericReturnType(method) : method.getGenericReturnType()) : void.class);
 			}
 			else {
 				Type[] genericParameterTypes = this.executable.getGenericParameterTypes();
@@ -535,7 +512,7 @@ public class MethodParameter {
 			if (method == null) {
 				return void.class;
 			}
-			if (KotlinDetector.isKotlinReflectPresent() && KotlinDetector.isKotlinType(getContainingClass())) {
+			if (KotlinDetector.isKotlinType(getContainingClass())) {
 				return KotlinDelegate.getReturnType(method);
 			}
 			return method.getReturnType();
@@ -705,7 +682,7 @@ public class MethodParameter {
 		}
 		ParameterNameDiscoverer discoverer = this.parameterNameDiscoverer;
 		if (discoverer != null) {
-			String[] parameterNames = null;
+			@Nullable String[] parameterNames = null;
 			if (this.executable instanceof Method method) {
 				parameterNames = discoverer.getParameterNames(method);
 			}
@@ -864,7 +841,7 @@ public class MethodParameter {
 	 * @return the corresponding MethodParameter instance
 	 * @since 6.1
 	 */
-	public static MethodParameter forFieldAwareConstructor(Constructor<?> ctor, int parameterIndex, String fieldName) {
+	public static MethodParameter forFieldAwareConstructor(Constructor<?> ctor, int parameterIndex, @Nullable String fieldName) {
 		return new FieldAwareConstructorParameter(ctor, parameterIndex, fieldName);
 	}
 
@@ -876,7 +853,7 @@ public class MethodParameter {
 
 		private volatile Annotation @Nullable [] combinedAnnotations;
 
-		public FieldAwareConstructorParameter(Constructor<?> constructor, int parameterIndex, String fieldName) {
+		public FieldAwareConstructorParameter(Constructor<?> constructor, int parameterIndex, @Nullable String fieldName) {
 			super(constructor, parameterIndex);
 			this.parameterName = fieldName;
 		}

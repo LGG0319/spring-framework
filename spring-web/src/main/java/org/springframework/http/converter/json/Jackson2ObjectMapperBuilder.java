@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -260,7 +260,7 @@ public class Jackson2ObjectMapperBuilder {
 	 * @since 5.2.4
 	 */
 	public Jackson2ObjectMapperBuilder annotationIntrospector(
-			Function<AnnotationIntrospector, AnnotationIntrospector> pairingFunction) {
+			Function<@Nullable AnnotationIntrospector, @Nullable AnnotationIntrospector> pairingFunction) {
 
 		this.annotationIntrospector = pairingFunction.apply(this.annotationIntrospector);
 		return this;
@@ -868,8 +868,7 @@ public class Jackson2ObjectMapperBuilder {
 			// jackson-datatype-jsr310 not available
 		}
 
-		// Kotlin present?
-		if (KotlinDetector.isKotlinPresent()) {
+		if (KotlinDetector.isKotlinReflectPresent()) {
 			try {
 				Class<? extends Module> kotlinModuleClass = (Class<? extends Module>)
 						ClassUtils.forName("com.fasterxml.jackson.module.kotlin.KotlinModule", this.moduleClassLoader);

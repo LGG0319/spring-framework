@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.apache.commons.logging.Log;
@@ -444,7 +445,7 @@ public class SimpAnnotationMethodMessageHandler extends AbstractMethodMessageHan
 		}
 		String[] result = new String[destinations.length];
 		for (int i = 0; i < destinations.length; i++) {
-			result[i] = this.valueResolver.resolveStringValue(destinations[i]);
+			result[i] = Objects.requireNonNull(this.valueResolver.resolveStringValue(destinations[i]));
 		}
 		return result;
 	}

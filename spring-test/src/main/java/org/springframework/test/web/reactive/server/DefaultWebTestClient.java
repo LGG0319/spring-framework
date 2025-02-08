@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -202,13 +202,13 @@ class DefaultWebTestClient implements WebTestClient {
 		}
 
 		@Override
-		public RequestBodySpec uri(String uriTemplate, Object... uriVariables) {
+		public RequestBodySpec uri(String uriTemplate, @Nullable Object... uriVariables) {
 			this.uriTemplate = uriTemplate;
 			return uri(DefaultWebTestClient.this.uriBuilderFactory.expand(uriTemplate, uriVariables));
 		}
 
 		@Override
-		public RequestBodySpec uri(String uriTemplate, Map<String, ?> uriVariables) {
+		public RequestBodySpec uri(String uriTemplate, Map<String, ? extends @Nullable Object> uriVariables) {
 			this.uriTemplate = uriTemplate;
 			return uri(DefaultWebTestClient.this.uriBuilderFactory.expand(uriTemplate, uriVariables));
 		}
@@ -348,12 +348,6 @@ class DefaultWebTestClient implements WebTestClient {
 		}
 
 		@Override
-		@Deprecated
-		public RequestHeadersSpec<?> syncBody(Object body) {
-			return bodyValue(body);
-		}
-
-		@Override
 		public ResponseSpec exchange() {
 			ClientRequest request = (this.inserter != null ?
 					initRequestBuilder().body(this.inserter).build() :
@@ -373,10 +367,10 @@ class DefaultWebTestClient implements WebTestClient {
 		private ClientRequest.Builder initRequestBuilder() {
 			return ClientRequest.create(this.httpMethod, initUri())
 					.headers(headersToUse -> {
-						if (!CollectionUtils.isEmpty(DefaultWebTestClient.this.defaultHeaders)) {
+						if (!(DefaultWebTestClient.this.defaultHeaders == null || DefaultWebTestClient.this.defaultHeaders.isEmpty())) {
 							headersToUse.putAll(DefaultWebTestClient.this.defaultHeaders);
 						}
-						if (!CollectionUtils.isEmpty(this.headers)) {
+						if (!this.headers.isEmpty()) {
 							headersToUse.putAll(this.headers);
 						}
 					})
@@ -547,20 +541,21 @@ class DefaultWebTestClient implements WebTestClient {
 		}
 
 		@Override
-		public <T extends S> T isEqualTo(B expected) {
+		public <T extends S> T isEqualTo(@Nullable B expected) {
 			this.result.assertWithDiagnostics(() ->
 					AssertionErrors.assertEquals("Response body", expected, this.result.getResponseBody()));
 			return self();
 		}
 
 		@Override
-		public <T extends S> T value(Matcher<? super B> matcher) {
+		public <T extends S> T value(Matcher<? super @Nullable B> matcher) {
 			this.result.assertWithDiagnostics(() -> MatcherAssert.assertThat(this.result.getResponseBody(), matcher));
 			return self();
 		}
 
 		@Override
-		public <T extends S, R> T value(Function<B, R> bodyMapper, Matcher<? super R> matcher) {
+		@SuppressWarnings("NullAway") // https://github.com/uber/NullAway/issues/1129
+		public <T extends S, R> T value(Function<@Nullable B, @Nullable R> bodyMapper, Matcher<? super @Nullable R> matcher) {
 			this.result.assertWithDiagnostics(() -> {
 				B body = this.result.getResponseBody();
 				MatcherAssert.assertThat(bodyMapper.apply(body), matcher);
@@ -569,7 +564,8 @@ class DefaultWebTestClient implements WebTestClient {
 		}
 
 		@Override
-		public <T extends S> T value(Consumer<B> consumer) {
+		@SuppressWarnings("NullAway") // https://github.com/uber/NullAway/issues/1129
+		public <T extends S> T value(Consumer<@Nullable B> consumer) {
 			this.result.assertWithDiagnostics(() -> consumer.accept(this.result.getResponseBody()));
 			return self();
 		}
@@ -592,7 +588,7 @@ class DefaultWebTestClient implements WebTestClient {
 	}
 
 
-	private static class DefaultListBodySpec<E> extends DefaultBodySpec<List<E>, ListBodySpec<E>>
+	private static class DefaultListBodySpec<E> extends DefaultBodySpec<List<@Nullable E>, ListBodySpec<E>>
 			implements ListBodySpec<E> {
 
 		DefaultListBodySpec(EntityExchangeResult<List<E>> result) {
@@ -601,7 +597,7 @@ class DefaultWebTestClient implements WebTestClient {
 
 		@Override
 		public ListBodySpec<E> hasSize(int size) {
-			List<E> actual = getResult().getResponseBody();
+			List<@Nullable E> actual = getResult().getResponseBody();
 			String message = "Response body does not contain " + size + " elements";
 			getResult().assertWithDiagnostics(() ->
 					AssertionErrors.assertEquals(message, size, (actual != null ? actual.size() : 0)));
@@ -610,9 +606,9 @@ class DefaultWebTestClient implements WebTestClient {
 
 		@Override
 		@SuppressWarnings("unchecked")
-		public ListBodySpec<E> contains(E... elements) {
+		public ListBodySpec<E> contains(@Nullable E... elements) {
 			List<E> expected = Arrays.asList(elements);
-			List<E> actual = getResult().getResponseBody();
+			List<@Nullable E> actual = getResult().getResponseBody();
 			String message = "Response body does not contain " + expected;
 			getResult().assertWithDiagnostics(() ->
 					AssertionErrors.assertTrue(message, (actual != null && actual.containsAll(expected))));
@@ -621,9 +617,9 @@ class DefaultWebTestClient implements WebTestClient {
 
 		@Override
 		@SuppressWarnings("unchecked")
-		public ListBodySpec<E> doesNotContain(E... elements) {
+		public ListBodySpec<E> doesNotContain(@Nullable E... elements) {
 			List<E> expected = Arrays.asList(elements);
-			List<E> actual = getResult().getResponseBody();
+			List<@Nullable E> actual = getResult().getResponseBody();
 			String message = "Response body should not have contained " + expected;
 			getResult().assertWithDiagnostics(() ->
 					AssertionErrors.assertTrue(message, (actual == null || !actual.containsAll(expected))));
@@ -631,7 +627,7 @@ class DefaultWebTestClient implements WebTestClient {
 		}
 
 		@Override
-		public EntityExchangeResult<List<E>> returnResult() {
+		public EntityExchangeResult<List<@Nullable E>> returnResult() {
 			return getResult();
 		}
 	}

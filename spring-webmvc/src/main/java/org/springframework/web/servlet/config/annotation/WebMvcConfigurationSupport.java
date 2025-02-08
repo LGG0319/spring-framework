@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1173,6 +1173,7 @@ public class WebMvcConfigurationSupport implements ApplicationContextAware, Serv
 	protected void addCorsMappings(CorsRegistry registry) {
 	}
 
+	@SuppressWarnings("removal")
 	@Bean
 	@Lazy
 	public HandlerMappingIntrospector mvcHandlerMappingIntrospector() {
@@ -1182,12 +1183,6 @@ public class WebMvcConfigurationSupport implements ApplicationContextAware, Serv
 	@Bean
 	public LocaleResolver localeResolver() {
 		return new AcceptHeaderLocaleResolver();
-	}
-
-	@Bean
-	@Deprecated
-	public org.springframework.web.servlet.ThemeResolver themeResolver() {
-		return new org.springframework.web.servlet.theme.FixedThemeResolver();
 	}
 
 	@Bean

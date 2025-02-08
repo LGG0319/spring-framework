@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -852,12 +852,12 @@ class ConfigurationClassParser {
 					deferredImport.getConfigurationClass());
 		}
 
-		@SuppressWarnings("NullAway")
 		void processGroupImports() {
 			for (DeferredImportSelectorGrouping grouping : this.groupings.values()) {
 				Predicate<String> filter = grouping.getCandidateFilter();
 				grouping.getImports().forEach(entry -> {
 					ConfigurationClass configurationClass = this.configurationClasses.get(entry.getMetadata());
+					Assert.state(configurationClass != null, "ConfigurationClass must not be null");
 					try {
 						processImports(configurationClass, asSourceClass(configurationClass, filter),
 								Collections.singleton(asSourceClass(entry.getImportClassName(), filter)),
@@ -1108,7 +1108,7 @@ class ConfigurationClassParser {
 		}
 
 		public Collection<SourceClass> getAnnotationAttributes(String annType, String attribute) throws IOException {
-			Map<String, Object> annotationAttributes = this.metadata.getAnnotationAttributes(annType, true);
+			Map<String, @Nullable Object> annotationAttributes = this.metadata.getAnnotationAttributes(annType, true);
 			if (annotationAttributes == null || !annotationAttributes.containsKey(attribute)) {
 				return Collections.emptySet();
 			}

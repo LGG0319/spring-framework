@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,14 +49,12 @@ import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.support.PropertiesLoaderUtils;
 import org.springframework.core.log.LogFormatUtils;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.RequestPath;
 import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.context.WebApplicationContext;
-import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.async.WebAsyncManager;
 import org.springframework.web.context.request.async.WebAsyncUtils;
 import org.springframework.web.multipart.MultipartException;
@@ -124,12 +122,6 @@ import org.springframework.web.util.WebUtils;
  * Out-of-the-box implementations work via HTTP accept header, cookie, or session.
  * The LocaleResolver bean name is "localeResolver"; default is
  * {@link org.springframework.web.servlet.i18n.AcceptHeaderLocaleResolver}.
- *
- * <li>Its theme resolution strategy is determined by a {@link ThemeResolver}.
- * Implementations for a fixed theme and for cookie and session storage are included.
- * The ThemeResolver bean name is "themeResolver"; default is
- * {@link org.springframework.web.servlet.theme.FixedThemeResolver}.
- * Theme support is deprecated as of 6.0 with no direct replacement.
  * </ul>
  *
  * <p><b>NOTE: The {@code @RequestMapping} annotation will only be processed if a
@@ -168,13 +160,6 @@ public class DispatcherServlet extends FrameworkServlet {
 
 	/** Well-known name for the LocaleResolver object in the bean factory for this namespace. */
 	public static final String LOCALE_RESOLVER_BEAN_NAME = "localeResolver";
-
-	/**
-	 * Well-known name for the ThemeResolver object in the bean factory for this namespace.
-	 * @deprecated as of 6.0, with no direct replacement
-	 */
-	@Deprecated
-	public static final String THEME_RESOLVER_BEAN_NAME = "themeResolver";
 
 	/**
 	 * Well-known name for the HandlerMapping object in the bean factory for this namespace.
@@ -226,22 +211,6 @@ public class DispatcherServlet extends FrameworkServlet {
 	 * @see org.springframework.web.servlet.support.RequestContextUtils#getLocaleResolver
 	 */
 	public static final String LOCALE_RESOLVER_ATTRIBUTE = DispatcherServlet.class.getName() + ".LOCALE_RESOLVER";
-
-	/**
-	 * Request attribute to hold the current ThemeResolver, retrievable by views.
-	 * @see org.springframework.web.servlet.support.RequestContextUtils#getThemeResolver
-	 * @deprecated as of 6.0, with no direct replacement
-	 */
-	@Deprecated
-	public static final String THEME_RESOLVER_ATTRIBUTE = DispatcherServlet.class.getName() + ".THEME_RESOLVER";
-
-	/**
-	 * Request attribute to hold the current ThemeSource, retrievable by views.
-	 * @see org.springframework.web.servlet.support.RequestContextUtils#getThemeSource
-	 * @deprecated as of 6.0, with no direct replacement
-	 */
-	@Deprecated
-	public static final String THEME_SOURCE_ATTRIBUTE = DispatcherServlet.class.getName() + ".THEME_SOURCE";
 
 	/**
 	 * Name of request attribute that holds a read-only {@code Map<String,?>}
@@ -311,10 +280,6 @@ public class DispatcherServlet extends FrameworkServlet {
 
 	/** LocaleResolver used by this servlet. */
 	private @Nullable LocaleResolver localeResolver;
-
-	/** ThemeResolver used by this servlet. */
-	@Deprecated
-	private @Nullable ThemeResolver themeResolver;
 
 	/** List of HandlerMappings used by this servlet. */
 	private @Nullable List<HandlerMapping> handlerMappings;
@@ -475,7 +440,6 @@ public class DispatcherServlet extends FrameworkServlet {
 	protected void initStrategies(ApplicationContext context) {
 		initMultipartResolver(context);
 		initLocaleResolver(context);
-		initThemeResolver(context);
 		initHandlerMappings(context);
 		initHandlerAdapters(context);
 		initHandlerExceptionResolvers(context);
@@ -529,32 +493,6 @@ public class DispatcherServlet extends FrameworkServlet {
 			if (logger.isTraceEnabled()) {
 				logger.trace("No LocaleResolver '" + LOCALE_RESOLVER_BEAN_NAME +
 						"': using default [" + this.localeResolver.getClass().getSimpleName() + "]");
-			}
-		}
-	}
-
-	/**
-	 * Initialize the ThemeResolver used by this class.
-	 * <p>If no bean is defined with the given name in the BeanFactory for this namespace,
-	 * we default to a FixedThemeResolver.
-	 */
-	@Deprecated
-	private void initThemeResolver(ApplicationContext context) {
-		try {
-			this.themeResolver = context.getBean(THEME_RESOLVER_BEAN_NAME, ThemeResolver.class);
-			if (logger.isTraceEnabled()) {
-				logger.trace("Detected " + this.themeResolver);
-			}
-			else if (logger.isDebugEnabled()) {
-				logger.debug("Detected " + this.themeResolver.getClass().getSimpleName());
-			}
-		}
-		catch (NoSuchBeanDefinitionException ex) {
-			// We need to use the default.
-			this.themeResolver = getDefaultStrategy(context, ThemeResolver.class);
-			if (logger.isTraceEnabled()) {
-				logger.trace("No ThemeResolver '" + THEME_RESOLVER_BEAN_NAME +
-						"': using default [" + this.themeResolver.getClass().getSimpleName() + "]");
 			}
 		}
 	}
@@ -774,19 +712,6 @@ public class DispatcherServlet extends FrameworkServlet {
 	}
 
 	/**
-	 * Return this servlet's ThemeSource, if any; else return {@code null}.
-	 * <p>Default is to return the WebApplicationContext as ThemeSource,
-	 * provided that it implements the ThemeSource interface.
-	 * @return the ThemeSource, if any
-	 * @see #getWebApplicationContext()
-	 */
-	@Deprecated
-	public final org.springframework.ui.context.@Nullable ThemeSource getThemeSource() {
-		return (getWebApplicationContext() instanceof org.springframework.ui.context.ThemeSource themeSource ?
-				themeSource : null);
-	}
-
-	/**
 	 * Obtain this servlet's MultipartResolver, if any.
 	 * @return the MultipartResolver used by this servlet, or {@code null} if none
 	 * (indicating that no multipart support is available)
@@ -898,7 +823,6 @@ public class DispatcherServlet extends FrameworkServlet {
 	/**
 	 * Exposes the DispatcherServlet-specific request attributes and delegates to {@link #doDispatch}
 	 * for the actual dispatching.
-	 * 用于请求实际调度
 	 */
 	@Override
 	protected void doService(HttpServletRequest request, HttpServletResponse response) throws Exception {
@@ -921,8 +845,6 @@ public class DispatcherServlet extends FrameworkServlet {
 		// Make framework objects available to handlers and view objects.
 		request.setAttribute(WEB_APPLICATION_CONTEXT_ATTRIBUTE, getWebApplicationContext());
 		request.setAttribute(LOCALE_RESOLVER_ATTRIBUTE, this.localeResolver);
-		request.setAttribute(THEME_RESOLVER_ATTRIBUTE, this.themeResolver);
-		request.setAttribute(THEME_SOURCE_ATTRIBUTE, getThemeSource());
 
 		if (this.flashMapManager != null) {
 			FlashMap inputFlashMap = this.flashMapManager.retrieveAndUpdate(request, response);
@@ -940,7 +862,6 @@ public class DispatcherServlet extends FrameworkServlet {
 		}
 
 		try {
-			// 请求实际调度
 			doDispatch(request, response);
 		}
 		finally {
@@ -1009,15 +930,9 @@ public class DispatcherServlet extends FrameworkServlet {
 	 * @param request current HTTP request
 	 * @param response current HTTP response
 	 * @throws Exception in case of any kind of processing failure
-	 * 处理对处理程序的实际调度
-	 * 处理程序将通过按顺序应用servlet的HandlerMappings来获得
-	 * HandlerAdapter将通过查询servlet已安装的HandlerAdapters来获得以查找第一个支持处理程序类的
-	 * 所有HTTP方法都由该方法处理。这取决于HandlerAdapters或处理程序
 	 */
-	@SuppressWarnings("deprecation")
 	protected void doDispatch(HttpServletRequest request, HttpServletResponse response) throws Exception {
 		HttpServletRequest processedRequest = request;
-		// 处理器执行器链
 		HandlerExecutionChain mappedHandler = null;
 		boolean multipartRequestParsed = false;
 
@@ -1028,39 +943,22 @@ public class DispatcherServlet extends FrameworkServlet {
 			Exception dispatchException = null;
 
 			try {
-				// 检测当前请求是否需要做文件上传
 				processedRequest = checkMultipart(request);
 				multipartRequestParsed = (processedRequest != request);
 
 				// Determine handler for the current request.
-				// 获得需要的映射器及拦截器等
 				mappedHandler = getHandler(processedRequest);
 				if (mappedHandler == null) {
 					noHandlerFound(processedRequest, response);
 					return;
 				}
 
-				// Determine handler adapter for the current request.
-				// 确定当前请求的处理程序适配器
-				HandlerAdapter ha = getHandlerAdapter(mappedHandler.getHandler());
-
-				// Process last-modified header, if supported by the handler.
-				// 如果处理程序支持，则处理上次修改的标头。
-				String method = request.getMethod();
-				boolean isGet = HttpMethod.GET.matches(method);
-				if (isGet || HttpMethod.HEAD.matches(method)) {
-					long lastModified = ha.getLastModified(request, mappedHandler.getHandler());
-					if (new ServletWebRequest(request, response).checkNotModified(lastModified) && isGet) {
-						return;
-					}
-				}
-                // 调用拦截器
 				if (!mappedHandler.applyPreHandle(processedRequest, response)) {
 					return;
 				}
 
-				// Actually invoke the handler.
-				// 实际调用处理方法
+				// Determine handler adapter and invoke the handler.
+				HandlerAdapter ha = getHandlerAdapter(mappedHandler.getHandler());
 				mv = ha.handle(processedRequest, response, mappedHandler.getHandler());
 
 				if (asyncManager.isConcurrentHandlingStarted()) {
@@ -1078,7 +976,6 @@ public class DispatcherServlet extends FrameworkServlet {
 				// making them available for @ExceptionHandler methods and other scenarios.
 				dispatchException = new ServletException("Handler dispatch failed: " + err, err);
 			}
-			// 处理结果集
 			processDispatchResult(processedRequest, response, mappedHandler, mv, dispatchException);
 		}
 		catch (Exception ex) {
@@ -1255,12 +1152,9 @@ public class DispatcherServlet extends FrameworkServlet {
 	 */
 	protected @Nullable HandlerExecutionChain getHandler(HttpServletRequest request) throws Exception {
 		if (this.handlerMappings != null) {
-			// 遍历全部获得的处理器映射器
 			for (HandlerMapping mapping : this.handlerMappings) {
-				// 通过当前请求进行匹配对应的handler
 				HandlerExecutionChain handler = mapping.getHandler(request);
 				if (handler != null) {
-					// 找到则返回
 					return handler;
 				}
 			}
@@ -1286,7 +1180,6 @@ public class DispatcherServlet extends FrameworkServlet {
 	 * Return the HandlerAdapter for this handler object.
 	 * @param handler the handler object to find an adapter for
 	 * @throws ServletException if no HandlerAdapter can be found for the handler. This is a fatal error.
-	 * 根据不同的handler适配不同的适配器
 	 */
 	protected HandlerAdapter getHandlerAdapter(Object handler) throws ServletException {
 		if (this.handlerAdapters != null) {

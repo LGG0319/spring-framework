@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -669,7 +669,6 @@ public class DataBinder implements PropertyEditorRegistry, TypeConverter {
 		}
 	}
 
-	@SuppressWarnings("NullAway")
 	private void assertValidators(@Nullable Validator... validators) {
 		Object target = getTarget();
 		for (Validator validator : validators) {
@@ -728,7 +727,6 @@ public class DataBinder implements PropertyEditorRegistry, TypeConverter {
 	 * {@link #setExcludedValidators(Predicate) exclude predicate}.
 	 * @since 6.1
 	 */
-	@SuppressWarnings("NullAway")
 	public List<Validator> getValidatorsToApply() {
 		return (this.excludedValidators != null ?
 				this.validators.stream().filter(validator -> !this.excludedValidators.test(validator)).toList() :
@@ -910,9 +908,9 @@ public class DataBinder implements PropertyEditorRegistry, TypeConverter {
 		}
 		else {
 			// A single data class constructor -> resolve constructor arguments from request parameters.
-			String[] paramNames = BeanUtils.getParameterNames(ctor);
+			@Nullable String[] paramNames = BeanUtils.getParameterNames(ctor);
 			Class<?>[] paramTypes = ctor.getParameterTypes();
-			Object[] args = new Object[paramTypes.length];
+			@Nullable Object[] args = new Object[paramTypes.length];
 			Set<String> failedParamNames = new HashSet<>(4);
 
 			for (int i = 0; i < paramNames.length; i++) {
@@ -1034,7 +1032,9 @@ public class DataBinder implements PropertyEditorRegistry, TypeConverter {
 		}
 		int size = (indexes.last() < this.autoGrowCollectionLimit ? indexes.last() + 1 : 0);
 		List<V> list = (List<V>) CollectionFactory.createCollection(paramType, size);
-		indexes.forEach(i -> list.add(null));
+		for (int i = 0; i < size; i++) {
+			list.add(null);
+		}
 		for (int index : indexes) {
 			list.set(index, (V) createObject(elementType, paramPath + "[" + index + "].", valueResolver));
 		}
@@ -1053,7 +1053,7 @@ public class DataBinder implements PropertyEditorRegistry, TypeConverter {
 			}
 			int startIdx = paramPath.length() + 1;
 			int endIdx = name.indexOf(']', startIdx);
-			String nestedPath = name.substring(0, endIdx + 2);
+			String nestedPath = ((name.length() > endIdx + 1) ? name.substring(0, endIdx + 2) : "");
 			boolean quoted = (endIdx - startIdx > 2 && name.charAt(startIdx) == '\'' && name.charAt(endIdx - 1) == '\'');
 			String key = (quoted ? name.substring(startIdx + 1, endIdx - 1) : name.substring(startIdx, endIdx));
 			if (map == null) {
@@ -1067,14 +1067,14 @@ public class DataBinder implements PropertyEditorRegistry, TypeConverter {
 	}
 
 	@SuppressWarnings("unchecked")
-	private <V> V @Nullable [] createArray(String paramPath, ResolvableType type, ValueResolver valueResolver) {
+	private <V> @Nullable V @Nullable [] createArray(String paramPath, ResolvableType type, ValueResolver valueResolver) {
 		ResolvableType elementType = type.getNested(2);
 		SortedSet<Integer> indexes = getIndexes(paramPath, valueResolver);
 		if (indexes == null) {
 			return null;
 		}
 		int size = (indexes.last() < this.autoGrowCollectionLimit ? indexes.last() + 1: 0);
-		V[] array = (V[]) Array.newInstance(elementType.resolve(), size);
+		@Nullable V[] array = (V[]) Array.newInstance(elementType.resolve(), size);
 		for (int index : indexes) {
 			array[index] = (V) createObject(elementType, paramPath + "[" + index + "].", valueResolver);
 		}
@@ -1085,7 +1085,7 @@ public class DataBinder implements PropertyEditorRegistry, TypeConverter {
 		SortedSet<Integer> indexes = null;
 		for (String name : valueResolver.getNames()) {
 			if (name.startsWith(paramPath + "[")) {
-				int endIndex = name.indexOf(']', paramPath.length() + 2);
+				int endIndex = name.indexOf(']', paramPath.length() + 1);
 				String rawIndex = name.substring(paramPath.length() + 1, endIndex);
 				int index = Integer.parseInt(rawIndex);
 				indexes = (indexes != null ? indexes : new TreeSet<>());
@@ -1096,7 +1096,7 @@ public class DataBinder implements PropertyEditorRegistry, TypeConverter {
 	}
 
 	private void validateConstructorArgument(
-			Class<?> constructorClass, String nestedPath, String name, @Nullable Object value) {
+			Class<?> constructorClass, String nestedPath, @Nullable String name, @Nullable Object value) {
 
 		Object[] hints = null;
 		if (this.targetType != null && this.targetType.getSource() instanceof MethodParameter parameter) {
@@ -1232,7 +1232,7 @@ public class DataBinder implements PropertyEditorRegistry, TypeConverter {
 	 * @see #getBindingErrorProcessor
 	 * @see BindingErrorProcessor#processMissingFieldError
 	 */
-	@SuppressWarnings("NullAway")
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	protected void checkRequiredFields(MutablePropertyValues mpvs) {
 		String[] requiredFields = getRequiredFields();
 		if (!ObjectUtils.isEmpty(requiredFields)) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -150,7 +150,7 @@ public class WebClientResponseException extends WebClientException {
 		}
 		else {
 			HttpHeaders result = new HttpHeaders();
-			for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
+			for (Map.Entry<String, List<String>> entry : headers.headerSet()) {
 				for (String value : entry.getValue()) {
 					result.add(entry.getKey(), value);
 				}
@@ -166,15 +166,6 @@ public class WebClientResponseException extends WebClientException {
 	 */
 	public HttpStatusCode getStatusCode() {
 		return this.statusCode;
-	}
-
-	/**
-	 * Return the raw HTTP status code value.
-	 * @deprecated in favor of {@link #getStatusCode()}, for removal in 7.0
-	 */
-	@Deprecated(since = "6.0")
-	public int getRawStatusCode() {
-		return this.statusCode.value();
 	}
 
 	/**

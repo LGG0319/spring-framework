@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -154,7 +154,7 @@ public class ReflectivePropertyAccessor implements PropertyAccessor {
 	}
 
 	@Override
-	@SuppressWarnings("NullAway")
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	public TypedValue read(EvaluationContext context, @Nullable Object target, String name) throws AccessException {
 		Assert.state(target != null, "Target must not be null");
 		Class<?> type = (target instanceof Class<?> clazz ? clazz : target.getClass());
@@ -507,7 +507,7 @@ public class ReflectivePropertyAccessor implements PropertyAccessor {
 	 * <p>Note: An optimized accessor is currently only usable for read attempts.
 	 * Do not call this method if you need a read-write accessor.
 	 */
-	@SuppressWarnings("NullAway")
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	public PropertyAccessor createOptimalAccessor(EvaluationContext context, @Nullable Object target, String name) {
 		// Don't be clever for arrays or a null target...
 		if (target == null) {
@@ -558,8 +558,7 @@ public class ReflectivePropertyAccessor implements PropertyAccessor {
 
 	private static boolean isKotlinProperty(Method method, String methodSuffix) {
 		Class<?> clazz = method.getDeclaringClass();
-		return KotlinDetector.isKotlinReflectPresent() &&
-				KotlinDetector.isKotlinType(clazz) &&
+		return KotlinDetector.isKotlinType(clazz) &&
 				KotlinDelegate.isKotlinProperty(method, methodSuffix);
 	}
 

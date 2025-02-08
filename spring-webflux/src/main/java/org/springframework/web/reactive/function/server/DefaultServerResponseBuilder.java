@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -91,7 +91,6 @@ class DefaultServerResponseBuilder implements ServerResponse.BodyBuilder {
 
 
 	@Override
-	@SuppressWarnings("NullAway") // TODO NullAway bug potentially due to the recursive generic type
 	public ServerResponse.BodyBuilder header(String headerName, @Nullable String... headerValues) {
 		Assert.notNull(headerName, "HeaderName must not be null");
 		for (String headerValue : headerValues) {
@@ -262,12 +261,6 @@ class DefaultServerResponseBuilder implements ServerResponse.BodyBuilder {
 	}
 
 	@Override
-	@Deprecated
-	public Mono<ServerResponse> syncBody(Object body) {
-		return bodyValue(body);
-	}
-
-	@Override
 	public Mono<ServerResponse> render(String name, Object... modelAttributes) {
 		return new DefaultRenderingResponseBuilder(name)
 				.status(this.statusCode)
@@ -353,6 +346,12 @@ class DefaultServerResponseBuilder implements ServerResponse.BodyBuilder {
 		protected abstract Mono<Void> writeToInternal(ServerWebExchange exchange, Context context);
 
 		private static <K,V> void copy(MultiValueMap<K,V> src, MultiValueMap<K,V> dst) {
+			if (!src.isEmpty()) {
+				dst.putAll(src);
+			}
+		}
+
+		private static void copy(HttpHeaders src, HttpHeaders dst) {
 			if (!src.isEmpty()) {
 				dst.putAll(src);
 			}

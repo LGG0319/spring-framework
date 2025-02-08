@@ -179,7 +179,7 @@ public class SingleConnectionDataSource extends DriverManagerDataSource
 
 
 	@Override
-	@SuppressWarnings("NullAway")
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	public Connection getConnection() throws SQLException {
 		this.connectionLock.lock();
 		try {

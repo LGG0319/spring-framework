@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,10 +78,10 @@ public abstract class AbstractServerHttpRequest implements ServerHttpRequest {
 	 * @param uri the URI for the request
 	 * @param contextPath the context path for the request
 	 * @param headers the headers for the request (as {@link MultiValueMap})
-	 * @since 6.0.8
+	 * @since 7.0
 	 */
 	public AbstractServerHttpRequest(HttpMethod method, URI uri, @Nullable String contextPath,
-			MultiValueMap<String, String> headers) {
+			HttpHeaders headers) {
 
 		Assert.notNull(method, "Method must not be null");
 		Assert.notNull(uri, "Uri must not be null");

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,12 +24,11 @@ import org.jspecify.annotations.Nullable;
 
 import org.springframework.test.context.ContextConfigurationAttributes;
 import org.springframework.test.context.ContextCustomizerFactory;
-import org.springframework.test.context.TestContextAnnotationUtils;
 import org.springframework.util.Assert;
 
 /**
  * {@link ContextCustomizerFactory} implementation that provides support for
- * Bean Overriding.
+ * {@linkplain BeanOverride Bean Overrides}.
  *
  * @author Simon Baslé
  * @author Stephane Nicoll
@@ -52,10 +51,7 @@ class BeanOverrideContextCustomizerFactory implements ContextCustomizerFactory {
 	}
 
 	private void findBeanOverrideHandlers(Class<?> testClass, Set<BeanOverrideHandler> handlers) {
-		if (TestContextAnnotationUtils.searchEnclosingClass(testClass)) {
-			findBeanOverrideHandlers(testClass.getEnclosingClass(), handlers);
-		}
-		BeanOverrideHandler.forTestClass(testClass).forEach(handler ->
+		BeanOverrideHandler.findAllHandlers(testClass).forEach(handler ->
 				Assert.state(handlers.add(handler), () ->
 						"Duplicate BeanOverrideHandler discovered in test class %s: %s"
 							.formatted(testClass.getName(), handler)));

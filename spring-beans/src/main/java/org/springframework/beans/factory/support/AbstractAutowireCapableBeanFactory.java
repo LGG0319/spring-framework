@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -555,7 +555,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	 * @see #instantiateUsingFactoryMethod
 	 * @see #autowireConstructor
 	 */
-	protected Object doCreateBean(String beanName, RootBeanDefinition mbd, Object @Nullable [] args)
+	protected Object doCreateBean(String beanName, RootBeanDefinition mbd, @Nullable Object @Nullable [] args)
 			throws BeanCreationException {
 
 		// Instantiate the bean.
@@ -771,7 +771,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 							// Fully resolve parameter names and argument values.
 							ConstructorArgumentValues cav = mbd.getConstructorArgumentValues();
 							Class<?>[] paramTypes = candidate.getParameterTypes();
-							String[] paramNames = null;
+							@Nullable String[] paramNames = null;
 							if (cav.containsNamedArgument()) {
 								ParameterNameDiscoverer pnd = getParameterNameDiscoverer();
 								if (pnd != null) {
@@ -779,7 +779,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 								}
 							}
 							Set<ConstructorArgumentValues.ValueHolder> usedValueHolders = CollectionUtils.newHashSet(paramTypes.length);
-							Object[] args = new Object[paramTypes.length];
+							@Nullable Object[] args = new Object[paramTypes.length];
 							for (int i = 0; i < args.length; i++) {
 								ConstructorArgumentValues.ValueHolder valueHolder = cav.getArgumentValue(
 										i, paramTypes[i], (paramNames != null ? paramNames[i] : null), usedValueHolders);
@@ -1002,7 +1002,11 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	 * that we couldn't obtain a shortcut FactoryBean instance
 	 */
 	private @Nullable FactoryBean<?> getSingletonFactoryBeanForTypeCheck(String beanName, RootBeanDefinition mbd) {
-		this.singletonLock.lock();
+		boolean locked = this.singletonLock.tryLock();
+		if (!locked) {
+			return null;
+		}
+
 		try {
 			BeanWrapper bw = this.factoryBeanInstanceCache.get(beanName);
 			if (bw != null) {

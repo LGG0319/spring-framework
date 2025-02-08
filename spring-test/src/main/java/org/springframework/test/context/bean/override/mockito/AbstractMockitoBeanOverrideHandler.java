@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,8 +39,8 @@ abstract class AbstractMockitoBeanOverrideHandler extends BeanOverrideHandler {
 	private final MockReset reset;
 
 
-	protected AbstractMockitoBeanOverrideHandler(Field field, ResolvableType beanType,
-			@Nullable String beanName, BeanOverrideStrategy strategy, @Nullable MockReset reset) {
+	protected AbstractMockitoBeanOverrideHandler(@Nullable Field field, ResolvableType beanType,
+			@Nullable String beanName, BeanOverrideStrategy strategy, MockReset reset) {
 
 		super(field, beanType, beanName, strategy);
 		this.reset = (reset != null ? reset : MockReset.AFTER);
@@ -57,20 +57,20 @@ abstract class AbstractMockitoBeanOverrideHandler extends BeanOverrideHandler {
 
 	@Override
 	protected void trackOverrideInstance(Object mock, SingletonBeanRegistry trackingBeanRegistry) {
-		getMockitoBeans(trackingBeanRegistry).add(mock);
+		getMockBeans(trackingBeanRegistry).add(mock);
 	}
 
-	private static MockitoBeans getMockitoBeans(SingletonBeanRegistry trackingBeanRegistry) {
-		String beanName = MockitoBeans.class.getName();
-		MockitoBeans mockitoBeans = null;
+	private static MockBeans getMockBeans(SingletonBeanRegistry trackingBeanRegistry) {
+		String beanName = MockBeans.class.getName();
+		MockBeans mockBeans = null;
 		if (trackingBeanRegistry.containsSingleton(beanName)) {
-			mockitoBeans = (MockitoBeans) trackingBeanRegistry.getSingleton(beanName);
+			mockBeans = (MockBeans) trackingBeanRegistry.getSingleton(beanName);
 		}
-		if (mockitoBeans == null) {
-			mockitoBeans = new MockitoBeans();
-			trackingBeanRegistry.registerSingleton(beanName, mockitoBeans);
+		if (mockBeans == null) {
+			mockBeans = new MockBeans();
+			trackingBeanRegistry.registerSingleton(beanName, mockBeans);
 		}
-		return mockitoBeans;
+		return mockBeans;
 	}
 
 	@Override

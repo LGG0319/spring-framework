@@ -26,6 +26,7 @@ import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.factory.BeanDefinitionStoreException;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
@@ -291,7 +292,7 @@ class ConfigurationClassBeanDefinitionReader {
 		this.registry.registerBeanDefinition(beanName, beanDefToRegister);
 	}
 
-	@SuppressWarnings("NullAway")
+	@SuppressWarnings("NullAway") // Reflection
 	protected boolean isOverriddenByExistingDefinition(BeanMethod beanMethod, String beanName) {
 		if (!this.registry.containsBeanDefinition(beanName)) {
 			return false;
@@ -309,7 +310,7 @@ class ConfigurationClassBeanDefinitionReader {
 				ccbd.setNonUniqueFactoryMethodName(ccbd.getFactoryMethodMetadata().getMethodName());
 				return true;
 			}
-			Map<String, Object> attributes =
+			Map<String, @Nullable Object> attributes =
 					configClass.getMetadata().getAnnotationAttributes(Configuration.class.getName());
 			if ((attributes != null && (Boolean) attributes.get("enforceUniqueMethods")) ||
 					!this.registry.isBeanDefinitionOverridable(beanName)) {

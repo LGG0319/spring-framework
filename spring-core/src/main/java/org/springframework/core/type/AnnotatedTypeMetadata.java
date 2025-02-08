@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2023 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,7 +88,7 @@ public interface AnnotatedTypeMetadata {
 	 * as map key (for example, "location") and the attribute's value as map value; or
 	 * {@code null} if no matching annotation is found
 	 */
-	default @Nullable Map<String, Object> getAnnotationAttributes(String annotationName) {
+	default @Nullable Map<String, @Nullable Object> getAnnotationAttributes(String annotationName) {
 		return getAnnotationAttributes(annotationName, false);
 	}
 
@@ -107,7 +107,7 @@ public interface AnnotatedTypeMetadata {
 	 * as map key (for example, "location") and the attribute's value as map value; or
 	 * {@code null} if no matching annotation is found
 	 */
-	default @Nullable Map<String, Object> getAnnotationAttributes(String annotationName,
+	default @Nullable Map<String, @Nullable Object> getAnnotationAttributes(String annotationName,
 			boolean classValuesAsString) {
 
 		MergedAnnotation<Annotation> annotation = getAnnotations().get(annotationName,
@@ -130,7 +130,7 @@ public interface AnnotatedTypeMetadata {
 	 * map value; or {@code null} if no matching annotation is found
 	 * @see #getAllAnnotationAttributes(String, boolean)
 	 */
-	default @Nullable MultiValueMap<String, Object> getAllAnnotationAttributes(String annotationName) {
+	default @Nullable MultiValueMap<String, @Nullable Object> getAllAnnotationAttributes(String annotationName) {
 		return getAllAnnotationAttributes(annotationName, false);
 	}
 
@@ -149,7 +149,7 @@ public interface AnnotatedTypeMetadata {
 	 * map value; or {@code null} if no matching annotation is found
 	 * @see #getAllAnnotationAttributes(String)
 	 */
-	default @Nullable MultiValueMap<String, Object> getAllAnnotationAttributes(
+	default @Nullable MultiValueMap<String, @Nullable Object> getAllAnnotationAttributes(
 			String annotationName, boolean classValuesAsString) {
 
 		Adapt[] adaptations = Adapt.values(classValuesAsString, true);
@@ -157,7 +157,7 @@ public interface AnnotatedTypeMetadata {
 				.filter(MergedAnnotationPredicates.unique(MergedAnnotation::getMetaTypes))
 				.map(MergedAnnotation::withNonMergedAttributes)
 				.collect(MergedAnnotationCollectors.toMultiValueMap(
-						map -> (map.isEmpty() ? null : map), adaptations));
+						(MultiValueMap<String, @Nullable Object> map) -> (map.isEmpty() ? null : map), adaptations));
 	}
 
 	/**

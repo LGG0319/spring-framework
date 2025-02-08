@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,6 @@ import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SignalType;
-import reactor.util.context.Context;
 
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
@@ -207,8 +206,6 @@ final class DefaultWebClient implements WebClient {
 
 		private final Map<String, Object> attributes = new LinkedHashMap<>(4);
 
-		private @Nullable Function<Context, Context> contextModifier;
-
 		private @Nullable Consumer<ClientHttpRequest> httpRequestConsumer;
 
 		DefaultRequestBodyUriSpec(HttpMethod httpMethod) {
@@ -216,7 +213,7 @@ final class DefaultWebClient implements WebClient {
 		}
 
 		@Override
-		public RequestBodySpec uri(String uriTemplate, Object... uriVariables) {
+		public RequestBodySpec uri(String uriTemplate, @Nullable Object... uriVariables) {
 			UriBuilder uriBuilder = uriBuilderFactory.uriString(uriTemplate);
 			attribute(URI_TEMPLATE_ATTRIBUTE, uriBuilder.toUriString());
 			return uri(uriBuilder.build(uriVariables));
@@ -335,14 +332,6 @@ final class DefaultWebClient implements WebClient {
 			return this;
 		}
 
-		@SuppressWarnings("deprecation")
-		@Override
-		public RequestBodySpec context(Function<Context, Context> contextModifier) {
-			this.contextModifier = (this.contextModifier != null ?
-					this.contextModifier.andThen(contextModifier) : contextModifier);
-			return this;
-		}
-
 		@Override
 		public RequestBodySpec httpRequest(Consumer<ClientHttpRequest> requestConsumer) {
 			this.httpRequestConsumer = (this.httpRequestConsumer != null ?
@@ -394,12 +383,6 @@ final class DefaultWebClient implements WebClient {
 		}
 
 		@Override
-		@Deprecated
-		public RequestHeadersSpec<?> syncBody(Object body) {
-			return bodyValue(body);
-		}
-
-		@Override
 		public ResponseSpec retrieve() {
 			return new DefaultResponseSpec(
 					this.httpMethod, initUri(), exchange(), DefaultWebClient.this.defaultStatusHandlers);
@@ -434,9 +417,7 @@ final class DefaultWebClient implements WebClient {
 			});
 		}
 
-		@SuppressWarnings("deprecation")
-		@Override
-		public Mono<ClientResponse> exchange() {
+		private Mono<ClientResponse> exchange() {
 			ClientRequest.Builder requestBuilder = initRequestBuilder();
 			ClientRequestObservationContext observationContext = new ClientRequestObservationContext(requestBuilder);
 			return Mono.deferContextual(contextView -> {
@@ -459,9 +440,6 @@ final class DefaultWebClient implements WebClient {
 								WebClientUtils.getRequestDescription(request.method(), request.url()) +
 								" [DefaultWebClient]")
 						.switchIfEmpty(NO_HTTP_CLIENT_RESPONSE_ERROR);
-				if (this.contextModifier != null) {
-					responseMono = responseMono.contextWrite(this.contextModifier);
-				}
 				final AtomicBoolean responseReceived = new AtomicBoolean();
 				return responseMono
 						.doOnNext(response -> responseReceived.set(true))
@@ -495,10 +473,10 @@ final class DefaultWebClient implements WebClient {
 		}
 
 		private void initHeaders(HttpHeaders out) {
-			if (!CollectionUtils.isEmpty(defaultHeaders)) {
+			if (defaultHeaders != null && !defaultHeaders.isEmpty()) {
 				out.putAll(defaultHeaders);
 			}
-			if (!CollectionUtils.isEmpty(this.headers)) {
+			if (this.headers != null && !this.headers.isEmpty()) {
 				out.putAll(this.headers);
 			}
 		}
