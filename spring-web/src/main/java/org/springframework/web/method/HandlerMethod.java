@@ -176,9 +176,13 @@ public class HandlerMethod extends AnnotatedMethod {
 	}
 
 	/**
-	 * Re-create HandlerMethod with additional input.
+	 * Re-create new HandlerMethod instance that copies the given HandlerMethod
+	 * but replaces the handler, and optionally checks for the presence of
+	 * validation annotations.
+	 * <p>Subclasses can override this to ensure that a HandlerMethod is of the
+	 * same type if re-created.
 	 */
-	private HandlerMethod(HandlerMethod handlerMethod, @Nullable Object handler, boolean initValidateFlags) {
+	protected HandlerMethod(HandlerMethod handlerMethod, @Nullable Object handler, boolean initValidateFlags) {
 		super(handlerMethod);
 		this.bean = (handler != null ? handler : handlerMethod.bean);
 		this.beanFactory = handlerMethod.beanFactory;
@@ -192,7 +196,8 @@ public class HandlerMethod extends AnnotatedMethod {
 				handlerMethod.validateReturnValue);
 		this.responseStatus = handlerMethod.responseStatus;
 		this.responseStatusReason = handlerMethod.responseStatusReason;
-		this.resolvedFromHandlerMethod = handlerMethod;
+		this.resolvedFromHandlerMethod = (handlerMethod.resolvedFromHandlerMethod != null ?
+				handlerMethod.resolvedFromHandlerMethod : handlerMethod);
 		this.description = handlerMethod.toString();
 	}
 
@@ -309,15 +314,19 @@ public class HandlerMethod extends AnnotatedMethod {
 	}
 
 	/**
-	 * If the provided instance contains a bean name rather than an object instance,
-	 * the bean name is resolved before a {@link HandlerMethod} is created and returned.
+	 * If the {@link #getBean() handler} is a bean name rather than the actual
+	 * handler instance, resolve the bean name through Spring configuration
+	 * (e.g. for prototype beans), and return a new {@link HandlerMethod}
+	 * instance with the resolved handler.
+	 * <p>If the {@link #getBean() handler} is not String, return the same instance.
 	 */
 	public HandlerMethod createWithResolvedBean() {
-		Object handler = this.bean;
-		if (this.bean instanceof String beanName) {
-			Assert.state(this.beanFactory != null, "Cannot resolve bean name without BeanFactory");
-			handler = this.beanFactory.getBean(beanName);
+		if (!(this.bean instanceof String beanName)) {
+			return this;
 		}
+
+		Assert.state(this.beanFactory != null, "Cannot resolve bean name without BeanFactory");
+		Object handler = this.beanFactory.getBean(beanName);
 		Assert.notNull(handler, "No handler instance");
 		return new HandlerMethod(this, handler, false);
 	}

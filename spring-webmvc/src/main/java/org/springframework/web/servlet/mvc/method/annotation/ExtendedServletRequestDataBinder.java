@@ -19,6 +19,7 @@ package org.springframework.web.servlet.mvc.method.annotation;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -39,7 +40,7 @@ import org.springframework.web.servlet.HandlerMapping;
  *
  * <p><strong>WARNING</strong>: Data binding can lead to security issues by exposing
  * parts of the object graph that are not meant to be accessed or modified by
- * external clients. Therefore the design and use of data binding should be considered
+ * external clients. Therefore, the design and use of data binding should be considered
  * carefully with regard to security. For more details, please refer to the dedicated
  * sections on data binding for
  * <a href="https://docs.spring.io/spring-framework/docs/current/reference/html/web.html#mvc-ann-initbinder-model-design">Spring Web MVC</a> and
@@ -53,11 +54,11 @@ import org.springframework.web.servlet.HandlerMapping;
  */
 public class ExtendedServletRequestDataBinder extends ServletRequestDataBinder {
 
-	private static final Set<String> FILTERED_HEADER_NAMES = Set.of("Accept", "Authorization", "Connection",
-			"Cookie", "From", "Host", "Origin", "Priority", "Range", "Referer", "Upgrade");
+	private static final Set<String> FILTERED_HEADER_NAMES = Set.of("accept", "authorization", "connection",
+			"cookie", "from", "host", "origin", "priority", "range", "referer", "upgrade");
 
 
-	private Predicate<String> headerPredicate = name -> !FILTERED_HEADER_NAMES.contains(name);
+	private Predicate<String> headerPredicate = name -> !FILTERED_HEADER_NAMES.contains(name.toLowerCase(Locale.ROOT));
 
 
 	/**
@@ -125,7 +126,7 @@ public class ExtendedServletRequestDataBinder extends ServletRequestDataBinder {
 				String name = names.nextElement();
 				Object value = getHeaderValue(httpRequest, name);
 				if (value != null) {
-					name = StringUtils.uncapitalize(name.replace("-", ""));
+					name = normalizeHeaderName(name);
 					addValueIfNotPresent(mpvs, "Header", name, value);
 				}
 			}
@@ -171,6 +172,10 @@ public class ExtendedServletRequestDataBinder extends ServletRequestDataBinder {
 		return values;
 	}
 
+	private static String normalizeHeaderName(String name) {
+		return StringUtils.uncapitalize(name.replace("-", ""));
+	}
+
 
 	/**
 	 * Resolver of values that looks up URI path variables.
@@ -206,8 +211,10 @@ public class ExtendedServletRequestDataBinder extends ServletRequestDataBinder {
 			if (request instanceof HttpServletRequest httpServletRequest) {
 				Enumeration<String> enumeration = httpServletRequest.getHeaderNames();
 				while (enumeration.hasMoreElements()) {
-					String headerName = enumeration.nextElement();
-					set.add(headerName.replaceAll("-", ""));
+					String name = enumeration.nextElement();
+					if (headerPredicate.test(name)) {
+						set.add(normalizeHeaderName(name));
+					}
 				}
 			}
 			return set;
