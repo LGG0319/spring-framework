@@ -34,3 +34,24 @@ You'll notice these files are already intentionally in .gitignore. The same poli
 Q. What about IntelliJ IDEA's own [Gradle support](https://www.jetbrains.com/help/idea/gradle.html)?
 
 A. Keep an eye on https://youtrack.jetbrains.com/issue/IDEA-53476
+
+## 1. java: 找不到符号
+    符号:   类 InstrumentationSavingAgent
+    位置: 程序包 org.springframework.instrument
+    删除项目包中aop、aspect 中main包位置配置
+    
+
+## 2. Kotlin: Return type mismatch: expected 'T?', actual 'java.lang.Class<T>'.
+    修改 设置 -> 编译器 -> java 编译器 中 所有项目的jdk 版本与项目jdk 版本一致
+
+## 3. Kotlin: Overload resolution ambiguity between candidates:
+    fun <T : Any> registerBean(beanName: @Nullable() String?, beanClass: Class<T>, vararg constructorArgs: Any): Unit
+    fun <T : Any> registerBean(beanName: @Nullable() String?, beanClass: Class<T>, supplier: @Nullable() Supplier<T>?, vararg customizers: BeanDefinitionCustomizer): Unit
+    
+    重新设置 项目包内文件位置
+
+## 4.  For more information, please refer to https://docs.gradle.org/8.8/userguide/validation_problems.html#input_file_does_not_exist in the Gradle documentation.
+    
+    
+
+

@@ -24,6 +24,7 @@ dependencies {
     implementation(project(":spring-tx"))
     implementation(project(":spring-web"))
     implementation(project(":spring-webmvc"))
+    implementation(project(":spring-instrument"))
     compileOnly group: 'jakarta.servlet', name: 'jakarta.servlet-api', version: '6.0.0'
     compileOnly 'org.projectlombok:lombok:1.18.30'
 }
