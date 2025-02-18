@@ -33,8 +33,6 @@ import org.springframework.core.codec.DataBufferDecoder;
 import org.springframework.core.codec.DataBufferEncoder;
 import org.springframework.core.codec.Decoder;
 import org.springframework.core.codec.Encoder;
-import org.springframework.core.codec.Netty5BufferDecoder;
-import org.springframework.core.codec.Netty5BufferEncoder;
 import org.springframework.core.codec.NettyByteBufDecoder;
 import org.springframework.core.codec.NettyByteBufEncoder;
 import org.springframework.core.codec.StringDecoder;
@@ -55,8 +53,6 @@ import org.springframework.http.codec.json.Jackson2JsonDecoder;
 import org.springframework.http.codec.json.Jackson2JsonEncoder;
 import org.springframework.http.codec.json.Jackson2SmileDecoder;
 import org.springframework.http.codec.json.Jackson2SmileEncoder;
-import org.springframework.http.codec.json.KotlinSerializationJsonDecoder;
-import org.springframework.http.codec.json.KotlinSerializationJsonEncoder;
 import org.springframework.http.codec.multipart.DefaultPartHttpMessageReader;
 import org.springframework.http.codec.multipart.MultipartHttpMessageReader;
 import org.springframework.http.codec.multipart.MultipartHttpMessageWriter;
@@ -92,12 +88,11 @@ class CodecConfigurerTests {
 	@Test
 	void defaultReaders() {
 		List<HttpMessageReader<?>> readers = this.configurer.getReaders();
-		assertThat(readers).hasSize(19);
+		assertThat(readers).hasSize(17);
 		assertThat(getNextDecoder(readers).getClass()).isEqualTo(ByteArrayDecoder.class);
 		assertThat(getNextDecoder(readers).getClass()).isEqualTo(ByteBufferDecoder.class);
 		assertThat(getNextDecoder(readers).getClass()).isEqualTo(DataBufferDecoder.class);
 		assertThat(getNextDecoder(readers).getClass()).isEqualTo(NettyByteBufDecoder.class);
-		assertThat(getNextDecoder(readers).getClass()).isEqualTo(Netty5BufferDecoder.class);
 		assertThat(readers.get(this.index.getAndIncrement()).getClass()).isEqualTo(ResourceHttpMessageReader.class);
 		assertStringDecoder(getNextDecoder(readers), true);
 		assertThat(getNextDecoder(readers).getClass()).isEqualTo(ProtobufDecoder.class);
@@ -106,7 +101,6 @@ class CodecConfigurerTests {
 		assertThat(readers.get(this.index.getAndIncrement()).getClass()).isEqualTo(MultipartHttpMessageReader.class);
 		assertThat(readers.get(this.index.getAndIncrement()).getClass()).isEqualTo(PartEventHttpMessageReader.class);
 		assertThat(getNextDecoder(readers).getClass()).isEqualTo(KotlinSerializationCborDecoder.class);
-		assertThat(getNextDecoder(readers).getClass()).isEqualTo(KotlinSerializationJsonDecoder.class);
 		assertThat(getNextDecoder(readers).getClass()).isEqualTo(KotlinSerializationProtobufDecoder.class);
 		assertThat(getNextDecoder(readers).getClass()).isEqualTo(Jackson2JsonDecoder.class);
 		assertThat(getNextDecoder(readers).getClass()).isEqualTo(Jackson2SmileDecoder.class);
@@ -117,12 +111,11 @@ class CodecConfigurerTests {
 	@Test
 	void defaultWriters() {
 		List<HttpMessageWriter<?>> writers = this.configurer.getWriters();
-		assertThat(writers).hasSize(18);
+		assertThat(writers).hasSize(16);
 		assertThat(getNextEncoder(writers).getClass()).isEqualTo(ByteArrayEncoder.class);
 		assertThat(getNextEncoder(writers).getClass()).isEqualTo(ByteBufferEncoder.class);
 		assertThat(getNextEncoder(writers).getClass()).isEqualTo(DataBufferEncoder.class);
 		assertThat(getNextEncoder(writers).getClass()).isEqualTo(NettyByteBufEncoder.class);
-		assertThat(getNextEncoder(writers).getClass()).isEqualTo(Netty5BufferEncoder.class);
 		assertThat(writers.get(index.getAndIncrement()).getClass()).isEqualTo(ResourceHttpMessageWriter.class);
 		assertStringEncoder(getNextEncoder(writers), true);
 		assertThat(writers.get(index.getAndIncrement()).getClass()).isEqualTo(ProtobufHttpMessageWriter.class);
@@ -130,7 +123,6 @@ class CodecConfigurerTests {
 		assertThat(writers.get(index.getAndIncrement()).getClass()).isEqualTo(PartEventHttpMessageWriter.class);
 		assertThat(writers.get(index.getAndIncrement()).getClass()).isEqualTo(PartHttpMessageWriter.class);
 		assertThat(getNextEncoder(writers).getClass()).isEqualTo(KotlinSerializationCborEncoder.class);
-		assertThat(getNextEncoder(writers).getClass()).isEqualTo(KotlinSerializationJsonEncoder.class);
 		assertThat(getNextEncoder(writers).getClass()).isEqualTo(KotlinSerializationProtobufEncoder.class);
 		assertThat(getNextEncoder(writers).getClass()).isEqualTo(Jackson2JsonEncoder.class);
 		assertThat(getNextEncoder(writers).getClass()).isEqualTo(Jackson2SmileEncoder.class);
@@ -160,14 +152,13 @@ class CodecConfigurerTests {
 
 		List<HttpMessageReader<?>> readers = this.configurer.getReaders();
 
-		assertThat(readers).hasSize(23);
+		assertThat(readers).hasSize(21);
 		assertThat(getNextDecoder(readers)).isSameAs(customDecoder1);
 		assertThat(readers.get(this.index.getAndIncrement())).isSameAs(customReader1);
 		assertThat(getNextDecoder(readers).getClass()).isEqualTo(ByteArrayDecoder.class);
 		assertThat(getNextDecoder(readers).getClass()).isEqualTo(ByteBufferDecoder.class);
 		assertThat(getNextDecoder(readers).getClass()).isEqualTo(DataBufferDecoder.class);
 		assertThat(getNextDecoder(readers).getClass()).isEqualTo(NettyByteBufDecoder.class);
-		assertThat(getNextDecoder(readers).getClass()).isEqualTo(Netty5BufferDecoder.class);
 		assertThat(readers.get(this.index.getAndIncrement()).getClass()).isEqualTo(ResourceHttpMessageReader.class);
 		assertThat(getNextDecoder(readers).getClass()).isEqualTo(StringDecoder.class);
 		assertThat(getNextDecoder(readers).getClass()).isEqualTo(ProtobufDecoder.class);
@@ -178,7 +169,6 @@ class CodecConfigurerTests {
 		assertThat(getNextDecoder(readers)).isSameAs(customDecoder2);
 		assertThat(readers.get(this.index.getAndIncrement())).isSameAs(customReader2);
 		assertThat(getNextDecoder(readers).getClass()).isEqualTo(KotlinSerializationCborDecoder.class);
-		assertThat(getNextDecoder(readers).getClass()).isEqualTo(KotlinSerializationJsonDecoder.class);
 		assertThat(getNextDecoder(readers).getClass()).isEqualTo(KotlinSerializationProtobufDecoder.class);
 		assertThat(getNextDecoder(readers).getClass()).isEqualTo(Jackson2JsonDecoder.class);
 		assertThat(getNextDecoder(readers).getClass()).isEqualTo(Jackson2SmileDecoder.class);
@@ -208,14 +198,13 @@ class CodecConfigurerTests {
 
 		List<HttpMessageWriter<?>> writers = this.configurer.getWriters();
 
-		assertThat(writers).hasSize(22);
+		assertThat(writers).hasSize(20);
 		assertThat(getNextEncoder(writers)).isSameAs(customEncoder1);
 		assertThat(writers.get(this.index.getAndIncrement())).isSameAs(customWriter1);
 		assertThat(getNextEncoder(writers).getClass()).isEqualTo(ByteArrayEncoder.class);
 		assertThat(getNextEncoder(writers).getClass()).isEqualTo(ByteBufferEncoder.class);
 		assertThat(getNextEncoder(writers).getClass()).isEqualTo(DataBufferEncoder.class);
 		assertThat(getNextEncoder(writers).getClass()).isEqualTo(NettyByteBufEncoder.class);
-		assertThat(getNextEncoder(writers).getClass()).isEqualTo(Netty5BufferEncoder.class);
 		assertThat(writers.get(index.getAndIncrement()).getClass()).isEqualTo(ResourceHttpMessageWriter.class);
 		assertThat(getNextEncoder(writers).getClass()).isEqualTo(CharSequenceEncoder.class);
 		assertThat(writers.get(index.getAndIncrement()).getClass()).isEqualTo(ProtobufHttpMessageWriter.class);
@@ -225,7 +214,6 @@ class CodecConfigurerTests {
 		assertThat(getNextEncoder(writers)).isSameAs(customEncoder2);
 		assertThat(writers.get(this.index.getAndIncrement())).isSameAs(customWriter2);
 		assertThat(getNextEncoder(writers).getClass()).isEqualTo(KotlinSerializationCborEncoder.class);
-		assertThat(getNextEncoder(writers).getClass()).isEqualTo(KotlinSerializationJsonEncoder.class);
 		assertThat(getNextEncoder(writers).getClass()).isEqualTo(KotlinSerializationProtobufEncoder.class);
 		assertThat(getNextEncoder(writers).getClass()).isEqualTo(Jackson2JsonEncoder.class);
 		assertThat(getNextEncoder(writers).getClass()).isEqualTo(Jackson2SmileEncoder.class);

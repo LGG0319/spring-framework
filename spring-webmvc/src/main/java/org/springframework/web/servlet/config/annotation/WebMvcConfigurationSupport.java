@@ -892,12 +892,6 @@ public class WebMvcConfigurationSupport implements ApplicationContextAware, Serv
 			messageConverters.add(new Jaxb2RootElementHttpMessageConverter());
 		}
 
-		if (kotlinSerializationCborPresent) {
-			messageConverters.add(new KotlinSerializationCborHttpMessageConverter());
-		}
-		if (kotlinSerializationJsonPresent) {
-			messageConverters.add(new KotlinSerializationJsonHttpMessageConverter());
-		}
 		if (kotlinSerializationProtobufPresent) {
 			messageConverters.add(new KotlinSerializationProtobufHttpMessageConverter());
 		}
@@ -915,6 +909,9 @@ public class WebMvcConfigurationSupport implements ApplicationContextAware, Serv
 		else if (jsonbPresent) {
 			messageConverters.add(new JsonbHttpMessageConverter());
 		}
+		else if (kotlinSerializationJsonPresent) {
+			messageConverters.add(new KotlinSerializationJsonHttpMessageConverter());
+		}
 
 		if (jackson2SmilePresent) {
 			Jackson2ObjectMapperBuilder builder = Jackson2ObjectMapperBuilder.smile();
@@ -929,6 +926,9 @@ public class WebMvcConfigurationSupport implements ApplicationContextAware, Serv
 				builder.applicationContext(this.applicationContext);
 			}
 			messageConverters.add(new MappingJackson2CborHttpMessageConverter(builder.build()));
+		}
+		else if (kotlinSerializationCborPresent) {
+			messageConverters.add(new KotlinSerializationCborHttpMessageConverter());
 		}
 		if (jackson2YamlPresent) {
 			Jackson2ObjectMapperBuilder builder = Jackson2ObjectMapperBuilder.yaml();
