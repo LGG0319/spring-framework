@@ -123,6 +123,22 @@ import org.springframework.util.StringUtils;
  * @see #addBeanPostProcessor
  * @see #getBean
  * @see #resolveDependency
+ * 它是一个功能完备的、可配置的 Bean 工厂，提供了对 Bean 定义（BeanDefinition）的注册、管理和依赖解析的支持。
+ * DefaultListableBeanFactory 是 Spring IoC 容器的基础实现，许多高级容器（如 ApplicationContext）都是基于它构建的。
+ * 功能：
+ * 		1. Bean 定义的注册与管理：
+ * 			支持注册、修改和删除 BeanDefinition。
+ * 			提供了对单例 Bean 和原型 Bean 的管理。
+ * 		2. 依赖解析与注入：
+ * 			自动解析 Bean 之间的依赖关系。
+ * 			支持构造函数注入、属性注入和方法注入。
+ * 		3. Bean 的生命周期管理：
+ * 			负责 Bean 的实例化、初始化和销毁。
+ * 			类型转换与表达式解析：
+ * 		4. 支持 Spring 的类型转换机制。
+ * 			支持 SpEL（Spring Expression Language）表达式解析。
+ * 		5. 扩展点支持：
+ * 			提供了多种扩展点，如 BeanPostProcessor、BeanFactoryPostProcessor 等。
  */
 @SuppressWarnings("serial")
 public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFactory
@@ -1142,6 +1158,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
 	//---------------------------------------------------------------------
 	// Implementation of BeanDefinitionRegistry interface
+	// 注册 Bean 定义
 	//---------------------------------------------------------------------
 
 	@Override
@@ -1169,6 +1186,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			else {
 				logBeanDefinitionOverriding(beanName, beanDefinition, existingDefinition);
 			}
+			// 将 BeanDefinition 注册到内部的 BeanDefinitionMap 中
 			this.beanDefinitionMap.put(beanName, beanDefinition);
 		}
 		else {
@@ -1202,6 +1220,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 					updatedDefinitions.addAll(this.beanDefinitionNames);
 					updatedDefinitions.add(beanName);
 					this.beanDefinitionNames = updatedDefinitions;
+					// 清除缓存的 Bean 名称列表
 					removeManualSingletonName(beanName);
 				}
 			}

@@ -37,6 +37,10 @@ import org.springframework.util.StringUtils;
  * @see org.springframework.beans.factory.BeanNameAware
  * @see org.springframework.beans.factory.support.RootBeanDefinition
  * @see org.springframework.beans.factory.support.ChildBeanDefinition
+ *
+ * 1. 封装 BeanDefinition：将 BeanDefinition 对象与 Bean 的名称和别名绑定在一起。
+ * 2. 支持别名：允许为一个 Bean 定义多个别名。
+ * 3. 简化注册过程：在 Spring 容器中注册 Bean 时，BeanDefinitionHolder 提供了一种统一的方式来处理 Bean 的名称、别名和定义。
  */
 public class BeanDefinitionHolder implements BeanMetadataElement {
 
