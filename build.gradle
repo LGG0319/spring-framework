@@ -1,5 +1,5 @@
 plugins {
-	id 'io.freefair.aspectj' version '8.4' apply false
+	id 'io.freefair.aspectj' version '8.13' apply false
 	// kotlinVersion is managed in gradle.properties
 	id 'org.jetbrains.kotlin.plugin.serialization' version "${kotlinVersion}" apply false
 	id 'org.jetbrains.dokka' version '1.9.20'
@@ -8,11 +8,6 @@ plugins {
 	id 'me.champeau.jmh' version '0.7.2' apply false
 	id "net.ltgt.errorprone" version "4.1.0" apply false
 }
-
-repositories {
-	maven {url 'https://maven.aliyun.com/repository/public/'}
-}
-
 
 ext {
 	moduleProjects = subprojects.findAll { it.name.startsWith("spring-") }
@@ -26,13 +21,6 @@ configure(allprojects) { project ->
 	group = "org.springframework"
 	repositories {
 		mavenCentral()
-		maven {
-			url = "https://repo.spring.io/milestone"
-			content {
-				// Netty 5 optional support
-				includeGroup 'io.projectreactor.netty'
-			}
-		}
 		if (version.contains('-')) {
 			maven { url = "https://repo.spring.io/milestone" }
 		}
@@ -92,10 +80,7 @@ configure([rootProject] + javaProjects) { project ->
 			"https://hc.apache.org/httpcomponents-client-5.4.x/current/httpclient5/apidocs/",
 			"https://projectreactor.io/docs/test/release/api/",
 			"https://junit.org/junit4/javadoc/4.13.2/",
-			// TODO Uncomment link to JUnit 5 docs once we execute Gradle with Java 18+.
-			// See https://github.com/spring-projects/spring-framework/issues/27497
-			//
-			// "https://junit.org/junit5/docs/5.12.0/api/",
+			"https://junit.org/junit5/docs/5.12.2/api/",
 			"https://www.reactive-streams.org/reactive-streams-1.0.3-javadoc/",
 			//"https://javadoc.io/static/io.rsocket/rsocket-core/1.1.1/",
 			"https://r2dbc.io/spec/1.0.0.RELEASE/api/",
