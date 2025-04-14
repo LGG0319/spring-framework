@@ -39,7 +39,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.BeanDefinitionStoreException;
+import org.springframework.beans.factory.BeanRegistrar;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
@@ -105,8 +107,8 @@ class ConfigurationClassParser {
 			(className.startsWith("java.lang.annotation.") || className.startsWith("org.springframework.stereotype."));
 
 	private static final Predicate<Condition> REGISTER_BEAN_CONDITION_FILTER = condition ->
-			(condition instanceof ConfigurationCondition configurationCondition
-					&& ConfigurationPhase.REGISTER_BEAN.equals(configurationCondition.getConfigurationPhase()));
+			(condition instanceof ConfigurationCondition configurationCondition &&
+				ConfigurationPhase.REGISTER_BEAN.equals(configurationCondition.getConfigurationPhase()));
 
 	private static final Comparator<DeferredImportSelectorHolder> DEFERRED_IMPORT_COMPARATOR =
 			(o1, o2) -> AnnotationAwareOrderComparator.INSTANCE.compare(o1.getImportSelector(), o2.getImportSelector());
@@ -179,8 +181,9 @@ class ConfigurationClassParser {
 				}
 
 				// Downgrade to lite (no enhancement) in case of no instance-level @Bean methods.
-				if (!configClass.hasNonStaticBeanMethods() && ConfigurationClassUtils.CONFIGURATION_CLASS_FULL.equals(
-						bd.getAttribute(ConfigurationClassUtils.CONFIGURATION_CLASS_ATTRIBUTE))) {
+				if (!configClass.getMetadata().isAbstract() && !configClass.hasNonStaticBeanMethods() &&
+						ConfigurationClassUtils.CONFIGURATION_CLASS_FULL.equals(
+								bd.getAttribute(ConfigurationClassUtils.CONFIGURATION_CLASS_ATTRIBUTE))) {
 					bd.setAttribute(ConfigurationClassUtils.CONFIGURATION_CLASS_ATTRIBUTE,
 							ConfigurationClassUtils.CONFIGURATION_CLASS_LITE);
 				}
@@ -626,6 +629,15 @@ class ConfigurationClassParser {
 							// 递归处理(被import的类也有可能被@Import注解修饰)
 							processImports(configClass, currentSourceClass, importSourceClasses, filter, false);
 						}
+					}
+					else if (candidate.isAssignable(BeanRegistrar.class)) {
+						Class<?> candidateClass = candidate.loadClass();
+						BeanRegistrar registrar = (BeanRegistrar) BeanUtils.instantiateClass(candidateClass);
+						AnnotationMetadata metadata = currentSourceClass.getMetadata();
+						if (registrar instanceof ImportAware importAware) {
+							importAware.setImportMetadata(metadata);
+						}
+						configClass.addBeanRegistrar(metadata.getClassName(), registrar);
 					}
 					else if (candidate.isAssignable(ImportBeanDefinitionRegistrar.class)) {
 						// Candidate class is an ImportBeanDefinitionRegistrar ->

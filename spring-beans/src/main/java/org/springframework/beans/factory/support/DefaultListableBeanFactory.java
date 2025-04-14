@@ -77,6 +77,7 @@ import org.springframework.core.NamedThreadLocal;
 import org.springframework.core.OrderComparator;
 import org.springframework.core.Ordered;
 import org.springframework.core.ResolvableType;
+import org.springframework.core.SpringProperties;
 import org.springframework.core.annotation.MergedAnnotation;
 import org.springframework.core.annotation.MergedAnnotations;
 import org.springframework.core.annotation.MergedAnnotations.SearchStrategy;
@@ -144,6 +145,20 @@ import org.springframework.util.StringUtils;
 public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFactory
 		implements ConfigurableListableBeanFactory, BeanDefinitionRegistry, Serializable {
 
+	/**
+	 * System property that instructs Spring to enforce strict locking during bean creation,
+	 * rather than the mix of strict and lenient locking that 6.2 applies by default. Setting
+	 * this flag to "true" restores 6.1.x style locking in the entire pre-instantiation phase.
+	 * <p>By default, the factory infers strict locking from the encountered thread names:
+	 * If additional threads have names that match the thread prefix of the main bootstrap thread,
+	 * they are considered external (multiple external bootstrap threads calling into the factory)
+	 * and therefore have strict locking applied to them. This inference can be turned off through
+	 * explicitly setting this flag to "false" rather than leaving it unspecified.
+	 * @since 6.2.6
+	 * @see #preInstantiateSingletons()
+	 */
+	public static final String STRICT_LOCKING_PROPERTY_NAME = "spring.locking.strict";
+
 	private static @Nullable Class<?> jakartaInjectProviderClass;
 
 	static {
@@ -161,6 +176,9 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	/** Map from serialized id to factory instance. */
 	private static final Map<String, Reference<DefaultListableBeanFactory>> serializableFactories =
 			new ConcurrentHashMap<>(8);
+
+	/** Whether strict locking is enforced or relaxed in this factory. */
+	private @Nullable final Boolean strictLocking = SpringProperties.checkFlag(STRICT_LOCKING_PROPERTY_NAME);
 
 	/** Optional id for this factory, for serialization purposes. */
 	private @Nullable String serializationId;
@@ -209,7 +227,8 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	/** Whether bean definition metadata may be cached for all beans. */
 	private volatile boolean configurationFrozen;
 
-	private volatile boolean preInstantiationPhase;
+	/** Name prefix of main thread: only set during pre-instantiation phase. */
+	private volatile @Nullable String mainThreadPrefix;
 
 	private final NamedThreadLocal<PreInstantiation> preInstantiationThread =
 			new NamedThreadLocal<>("Pre-instantiation thread marker");
@@ -492,14 +511,14 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			@SuppressWarnings("unchecked")
 			@Override
 			public Stream<T> stream() {
-				return Arrays.stream(getBeanNamesForTypedStream(requiredType, allowEagerInit))
+				return Arrays.stream(beanNamesForStream(requiredType, true, allowEagerInit))
 						.map(name -> (T) getBean(name))
 						.filter(bean -> !(bean instanceof NullBean));
 			}
 			@SuppressWarnings("unchecked")
 			@Override
 			public Stream<T> orderedStream() {
-				String[] beanNames = getBeanNamesForTypedStream(requiredType, allowEagerInit);
+				String[] beanNames = beanNamesForStream(requiredType, true, allowEagerInit);
 				if (beanNames.length == 0) {
 					return Stream.empty();
 				}
@@ -515,16 +534,16 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			}
 			@SuppressWarnings("unchecked")
 			@Override
-			public Stream<T> stream(Predicate<Class<?>> customFilter) {
-				return Arrays.stream(getBeanNamesForTypedStream(requiredType, allowEagerInit))
+			public Stream<T> stream(Predicate<Class<?>> customFilter, boolean includeNonSingletons) {
+				return Arrays.stream(beanNamesForStream(requiredType, includeNonSingletons, allowEagerInit))
 						.filter(name -> customFilter.test(getType(name)))
 						.map(name -> (T) getBean(name))
 						.filter(bean -> !(bean instanceof NullBean));
 			}
 			@SuppressWarnings("unchecked")
 			@Override
-			public Stream<T> orderedStream(Predicate<Class<?>> customFilter) {
-				String[] beanNames = getBeanNamesForTypedStream(requiredType, allowEagerInit);
+			public Stream<T> orderedStream(Predicate<Class<?>> customFilter, boolean includeNonSingletons) {
+				String[] beanNames = beanNamesForStream(requiredType, includeNonSingletons, allowEagerInit);
 				if (beanNames.length == 0) {
 					return Stream.empty();
 				}
@@ -563,8 +582,8 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		return null;
 	}
 
-	private String[] getBeanNamesForTypedStream(ResolvableType requiredType, boolean allowEagerInit) {
-		return BeanFactoryUtils.beanNamesForTypeIncludingAncestors(this, requiredType, true, allowEagerInit);
+	private String[] beanNamesForStream(ResolvableType requiredType, boolean includeNonSingletons, boolean allowEagerInit) {
+		return BeanFactoryUtils.beanNamesForTypeIncludingAncestors(this, requiredType, includeNonSingletons, allowEagerInit);
 	}
 
 	@Override
@@ -630,9 +649,14 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 							}
 						}
 						else {
-							if (includeNonSingletons || isNonLazyDecorated ||
-									(allowFactoryBeanInit && isSingleton(beanName, mbd, dbd))) {
+							if (includeNonSingletons || isNonLazyDecorated) {
 								matchFound = isTypeMatch(beanName, type, allowFactoryBeanInit);
+							}
+							else if (allowFactoryBeanInit) {
+								// Type check before singleton check, avoiding FactoryBean instantiation
+								// for early FactoryBean.isSingleton() calls on non-matching beans.
+								matchFound = isTypeMatch(beanName, type, allowFactoryBeanInit) &&
+										isSingleton(beanName, mbd, dbd);
 							}
 							if (!matchFound) {
 								// In case of FactoryBean, try to match FactoryBean instance itself next.
@@ -897,7 +921,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			String beanName, DependencyDescriptor descriptor, AutowireCandidateResolver resolver)
 			throws NoSuchBeanDefinitionException {
 
-		String bdName = BeanFactoryUtils.transformedBeanName(beanName);
+		String bdName = transformedBeanName(beanName);
 		if (containsBeanDefinition(bdName)) {
 			return isAutowireCandidate(beanName, getMergedLocalBeanDefinition(bdName), descriptor, resolver);
 		}
@@ -931,7 +955,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	protected boolean isAutowireCandidate(String beanName, RootBeanDefinition mbd,
 			DependencyDescriptor descriptor, AutowireCandidateResolver resolver) {
 
-		String bdName = BeanFactoryUtils.transformedBeanName(beanName);
+		String bdName = transformedBeanName(beanName);
 		resolveBeanClass(mbd, bdName);
 		if (mbd.isFactoryMethodUnique && mbd.factoryMethodToIntrospect == null) {
 			new ConstructorResolver(this).resolveFactoryMethodIfPossible(mbd);
@@ -1009,6 +1033,14 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	}
 
 	@Override
+	protected void cacheMergedBeanDefinition(RootBeanDefinition mbd, String beanName) {
+		super.cacheMergedBeanDefinition(mbd, beanName);
+		if (mbd.isPrimary()) {
+			this.primaryBeanNames.add(beanName);
+		}
+	}
+
+	@Override
 	protected void checkMergedBeanDefinition(RootBeanDefinition mbd, String beanName, @Nullable Object @Nullable [] args) {
 		super.checkMergedBeanDefinition(mbd, beanName, args);
 
@@ -1020,7 +1052,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			}
 		}
 		else {
-			// Bean intended to be initialized in main bootstrap thread
+			// Bean intended to be initialized in main bootstrap thread.
 			if (this.preInstantiationThread.get() == PreInstantiation.BACKGROUND) {
 				throw new BeanCurrentlyInCreationException(beanName, "Bean marked for mainline initialization " +
 						"but requested in background thread - enforce early instantiation in mainline thread " +
@@ -1031,7 +1063,39 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
 	@Override
 	protected @Nullable Boolean isCurrentThreadAllowedToHoldSingletonLock() {
-		return (this.preInstantiationPhase ? this.preInstantiationThread.get() != PreInstantiation.BACKGROUND : null);
+		String mainThreadPrefix = this.mainThreadPrefix;
+		if (this.mainThreadPrefix != null) {
+			// We only differentiate in the preInstantiateSingletons phase.
+
+			PreInstantiation preInstantiation = this.preInstantiationThread.get();
+			if (preInstantiation != null) {
+				// A Spring-managed bootstrap thread:
+				// MAIN is allowed to lock (true) or even forced to lock (null),
+				// BACKGROUND is never allowed to lock (false).
+				return switch (preInstantiation) {
+					case MAIN -> (Boolean.TRUE.equals(this.strictLocking) ? null : true);
+					case BACKGROUND -> false;
+				};
+			}
+
+			// Not a Spring-managed bootstrap thread...
+			if (Boolean.FALSE.equals(this.strictLocking)) {
+				// Explicitly configured to use lenient locking wherever possible.
+				return true;
+			}
+			else if (this.strictLocking == null) {
+				// No explicit locking configuration -> infer appropriate locking.
+				if (mainThreadPrefix != null && !getThreadNamePrefix().equals(mainThreadPrefix)) {
+					// An unmanaged thread (assumed to be application-internal) with lenient locking,
+					// and not part of the same thread pool that provided the main bootstrap thread
+					// (excluding scenarios where we are hit by multiple external bootstrap threads).
+					return true;
+				}
+			}
+		}
+
+		// Traditional behavior: forced to always hold a full lock.
+		return null;
 	}
 
 	@Override
@@ -1047,8 +1111,8 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		// Trigger initialization of all non-lazy singleton beans...
 		List<CompletableFuture<?>> futures = new ArrayList<>();
 
-		this.preInstantiationPhase = true;
 		this.preInstantiationThread.set(PreInstantiation.MAIN);
+		this.mainThreadPrefix = getThreadNamePrefix();
 		try {
 			for (String beanName : beanNames) {
 				RootBeanDefinition mbd = getMergedLocalBeanDefinition(beanName);
@@ -1061,8 +1125,8 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			}
 		}
 		finally {
+			this.mainThreadPrefix = null;
 			this.preInstantiationThread.remove();
-			this.preInstantiationPhase = false;
 		}
 
 		if (!futures.isEmpty()) {
@@ -1153,6 +1217,12 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		else {
 			getBean(beanName);
 		}
+	}
+
+	private static String getThreadNamePrefix() {
+		String name = Thread.currentThread().getName();
+		int numberSeparator = name.lastIndexOf('-');
+		return (numberSeparator >= 0 ? name.substring(0, numberSeparator) : name);
 	}
 
 
@@ -2527,8 +2597,8 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		}
 
 		@Override
-		public Stream<Object> stream(Predicate<Class<?>> customFilter) {
-			return Arrays.stream(getBeanNamesForTypedStream(this.descriptor.getResolvableType(), true))
+		public Stream<Object> stream(Predicate<Class<?>> customFilter, boolean includeNonSingletons) {
+			return Arrays.stream(beanNamesForStream(this.descriptor.getResolvableType(), includeNonSingletons, true))
 					.filter(name -> AutowireUtils.isAutowireCandidate(DefaultListableBeanFactory.this, name))
 					.filter(name -> customFilter.test(getType(name)))
 					.map(name -> getBean(name))
@@ -2536,8 +2606,8 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		}
 
 		@Override
-		public Stream<Object> orderedStream(Predicate<Class<?>> customFilter) {
-			String[] beanNames = getBeanNamesForTypedStream(this.descriptor.getResolvableType(), true);
+		public Stream<Object> orderedStream(Predicate<Class<?>> customFilter, boolean includeNonSingletons) {
+			String[] beanNames = beanNamesForStream(this.descriptor.getResolvableType(), includeNonSingletons, true);
 			if (beanNames.length == 0) {
 				return Stream.empty();
 			}

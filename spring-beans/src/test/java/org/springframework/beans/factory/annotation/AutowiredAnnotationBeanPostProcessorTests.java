@@ -1614,6 +1614,10 @@ class AutowiredAnnotationBeanPostProcessorTests {
 		assertThat(testBeans).containsExactly(bf.getBean("testBean1", TestBean.class), bf.getBean("testBean2", TestBean.class));
 		testBeans = bean.allTestBeansInOrder();
 		assertThat(testBeans).containsExactly(bf.getBean("testBean1", TestBean.class), bf.getBean("testBean2", TestBean.class));
+		testBeans = bean.allSingletonBeans();
+		assertThat(testBeans).isEmpty();
+		testBeans = bean.allSingletonBeansInOrder();
+		assertThat(testBeans).isEmpty();
 	}
 
 	@Test
@@ -1648,6 +1652,12 @@ class AutowiredAnnotationBeanPostProcessorTests {
 		testBeans = bean.allTestBeansInOrder();
 		assertThat(testBeans).hasSize(1);
 		assertThat(testBeans).contains(bf.getBean("testBean", TestBean.class));
+		testBeans = bean.allSingletonBeans();
+		assertThat(testBeans).hasSize(1);
+		assertThat(testBeans).contains(bf.getBean("testBean", TestBean.class));
+		testBeans = bean.allSingletonBeansInOrder();
+		assertThat(testBeans).hasSize(1);
+		assertThat(testBeans).contains(bf.getBean("testBean", TestBean.class));
 	}
 
 	@Test
@@ -1675,6 +1685,10 @@ class AutowiredAnnotationBeanPostProcessorTests {
 		assertThat(testBeans).isEmpty();
 		testBeans = bean.allTestBeansInOrder();
 		assertThat(testBeans).isEmpty();
+		testBeans = bean.allSingletonBeans();
+		assertThat(testBeans).isEmpty();
+		testBeans = bean.allSingletonBeansInOrder();
+		assertThat(testBeans).isEmpty();
 	}
 
 	@Test
@@ -1698,6 +1712,8 @@ class AutowiredAnnotationBeanPostProcessorTests {
 		assertThat(bean.streamTestBeansInOrder()).containsExactly(testBean1, testBean2);
 		assertThat(bean.allTestBeans()).containsExactly(testBean1, testBean2);
 		assertThat(bean.allTestBeansInOrder()).containsExactly(testBean1, testBean2);
+		assertThat(bean.allSingletonBeans()).containsExactly(testBean1, testBean2);
+		assertThat(bean.allSingletonBeansInOrder()).containsExactly(testBean1, testBean2);
 	}
 
 	@Test
@@ -1711,6 +1727,7 @@ class AutowiredAnnotationBeanPostProcessorTests {
 		tb2.setFactoryMethodName("newTestBean2");
 		tb2.setLazyInit(true);
 		bf.registerBeanDefinition("testBean2", tb2);
+		bf.registerAlias("testBean2", "testBean");
 
 		ObjectProviderInjectionBean bean = bf.getBean("annotatedBean", ObjectProviderInjectionBean.class);
 		TestBean testBean1 = bf.getBean("testBean1", TestBean.class);
@@ -1728,6 +1745,41 @@ class AutowiredAnnotationBeanPostProcessorTests {
 		assertThat(bean.streamTestBeansInOrder()).containsExactly(testBean2, testBean1);
 		assertThat(bean.allTestBeans()).containsExactly(testBean1, testBean2);
 		assertThat(bean.allTestBeansInOrder()).containsExactly(testBean2, testBean1);
+		assertThat(bean.allSingletonBeans()).containsExactly(testBean1, testBean2);
+		assertThat(bean.allSingletonBeansInOrder()).containsExactly(testBean2, testBean1);
+	}
+
+	@Test
+	void objectProviderInjectionWithLateMarkedTargetPrimary() {
+		bf.registerBeanDefinition("annotatedBean", new RootBeanDefinition(ObjectProviderInjectionBean.class));
+		RootBeanDefinition tb1 = new RootBeanDefinition(TestBeanFactory.class);
+		tb1.setFactoryMethodName("newTestBean1");
+		bf.registerBeanDefinition("testBean1", tb1);
+		RootBeanDefinition tb2 = new RootBeanDefinition(TestBeanFactory.class);
+		tb2.setFactoryMethodName("newTestBean2");
+		tb2.setLazyInit(true);
+		bf.registerBeanDefinition("testBean2", tb2);
+		bf.registerAlias("testBean2", "testBean");
+		tb1.setPrimary(true);
+
+		ObjectProviderInjectionBean bean = bf.getBean("annotatedBean", ObjectProviderInjectionBean.class);
+		TestBean testBean1 = bf.getBean("testBean1", TestBean.class);
+		assertThat(bean.getTestBean()).isSameAs(testBean1);
+		assertThat(bean.getOptionalTestBean()).isSameAs(testBean1);
+		assertThat(bean.consumeOptionalTestBean()).isSameAs(testBean1);
+		assertThat(bean.getUniqueTestBean()).isSameAs(testBean1);
+		assertThat(bean.consumeUniqueTestBean()).isSameAs(testBean1);
+		assertThat(bf.containsSingleton("testBean2")).isFalse();
+
+		TestBean testBean2 = bf.getBean("testBean2", TestBean.class);
+		assertThat(bean.iterateTestBeans()).containsExactly(testBean1, testBean2);
+		assertThat(bean.forEachTestBeans()).containsExactly(testBean1, testBean2);
+		assertThat(bean.streamTestBeans()).containsExactly(testBean1, testBean2);
+		assertThat(bean.streamTestBeansInOrder()).containsExactly(testBean2, testBean1);
+		assertThat(bean.allTestBeans()).containsExactly(testBean1, testBean2);
+		assertThat(bean.allTestBeansInOrder()).containsExactly(testBean2, testBean1);
+		assertThat(bean.allSingletonBeans()).containsExactly(testBean1, testBean2);
+		assertThat(bean.allSingletonBeansInOrder()).containsExactly(testBean2, testBean1);
 	}
 
 	@Test
@@ -1739,7 +1791,7 @@ class AutowiredAnnotationBeanPostProcessorTests {
 		bf.registerBeanDefinition("testBean1", tb1);
 		RootBeanDefinition tb2 = new RootBeanDefinition(TestBeanFactory.class);
 		tb2.setFactoryMethodName("newTestBean2");
-		tb2.setLazyInit(true);
+		tb2.setScope(BeanDefinition.SCOPE_PROTOTYPE);
 		bf.registerBeanDefinition("testBean2", tb2);
 
 		ObjectProviderInjectionBean bean = bf.getBean("annotatedBean", ObjectProviderInjectionBean.class);
@@ -1747,6 +1799,7 @@ class AutowiredAnnotationBeanPostProcessorTests {
 				bf.getBean("testBean1", TestBean.class));
 		assertThat(bean.allTestBeansInOrder()).containsExactly(bf.getBean("testBean2", TestBean.class),
 				bf.getBean("testBean1", TestBean.class));
+		assertThat(bean.allSingletonBeansInOrder()).containsExactly(bf.getBean("testBean1", TestBean.class));
 	}
 
 	@Test
@@ -1757,6 +1810,7 @@ class AutowiredAnnotationBeanPostProcessorTests {
 		bf.registerBeanDefinition("testBean1", tb1);
 		RootBeanDefinition tb2 = new RootBeanDefinition(TestBeanFactory.class);
 		tb2.setFactoryMethodName("newTestBean2");
+		tb2.setScope(BeanDefinition.SCOPE_PROTOTYPE);
 		bf.registerBeanDefinition("testBean2", tb2);
 
 		DefaultListableBeanFactory parent = new DefaultListableBeanFactory();
@@ -1769,6 +1823,10 @@ class AutowiredAnnotationBeanPostProcessorTests {
 		tb4.setLazyInit(true);
 		parent.registerBeanDefinition("testBean4", tb4);
 		bf.setParentBeanFactory(parent);
+
+		RootBeanDefinition tb5 = new RootBeanDefinition(NullFactoryMethods.class);
+		tb5.setFactoryMethodName("createTestBean");
+		bf.registerBeanDefinition("testBean5", tb5);
 
 		ObjectProviderInjectionBean bean = bf.getBean("annotatedBean", ObjectProviderInjectionBean.class);
 		assertThat(bean.streamTestBeans()).containsExactly(bf.getBean("testBean1", TestBean.class),
@@ -1785,11 +1843,15 @@ class AutowiredAnnotationBeanPostProcessorTests {
 				bf.getBean("testBean2", TestBean.class), bf.getBean("testBean4", TestBean.class));
 		assertThat(bean.allTestBeansInOrder()).containsExactly(bf.getBean("testBean2", TestBean.class),
 				bf.getBean("testBean1", TestBean.class), bf.getBean("testBean4", TestBean.class));
+		assertThat(bean.allSingletonBeans()).containsExactly(bf.getBean("testBean1", TestBean.class),
+				bf.getBean("testBean4", TestBean.class));
+		assertThat(bean.allSingletonBeansInOrder()).containsExactly(bf.getBean("testBean1", TestBean.class),
+				bf.getBean("testBean4", TestBean.class));
 
 		Map<String, TestBean> typeMatches = BeanFactoryUtils.beansOfTypeIncludingAncestors(bf, TestBean.class);
 		assertThat(typeMatches.remove("testBean3")).isNotNull();
 		Map<String, TestBean> candidates = SimpleAutowireCandidateResolver.resolveAutowireCandidates(bf, TestBean.class);
-		assertThat(candidates).containsExactlyEntriesOf(candidates);
+		assertThat(candidates).containsExactlyEntriesOf(typeMatches);
 	}
 
 	@Test
@@ -2366,7 +2428,7 @@ class AutowiredAnnotationBeanPostProcessorTests {
 	}
 
 	@Test
-	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@SuppressWarnings("unchecked")
 	void genericsBasedConstructorInjectionWithNonTypedTarget() {
 		RootBeanDefinition bd = new RootBeanDefinition(RepositoryConstructorInjectionBean.class);
 		bd.setScope(BeanDefinition.SCOPE_PROTOTYPE);
@@ -3388,6 +3450,14 @@ class AutowiredAnnotationBeanPostProcessorTests {
 
 		public List<TestBean> allTestBeansInOrder() {
 			return this.testBean.orderedStream(ObjectProvider.UNFILTERED).toList();
+		}
+
+		public List<TestBean> allSingletonBeans() {
+			return this.testBean.stream(ObjectProvider.UNFILTERED, false).toList();
+		}
+
+		public List<TestBean> allSingletonBeansInOrder() {
+			return this.testBean.orderedStream(ObjectProvider.UNFILTERED, false).toList();
 		}
 	}
 

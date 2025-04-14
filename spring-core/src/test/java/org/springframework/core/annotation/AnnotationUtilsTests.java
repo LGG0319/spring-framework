@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2024 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -923,8 +923,8 @@ class AnnotationUtilsTests {
 		Map<String, Object> map = Collections.singletonMap(VALUE, 42L);
 		assertThatIllegalStateException().isThrownBy(() ->
 				synthesizeAnnotation(map, Component.class, null).value())
-			.withMessageContaining("Attribute 'value' in annotation org.springframework.core.testfixture.stereotype.Component "
-					+ "should be compatible with java.lang.String but a java.lang.Long value was returned");
+			.withMessageContaining("Attribute 'value' in annotation org.springframework.core.testfixture.stereotype.Component " +
+					"should be compatible with java.lang.String but a java.lang.Long value was returned");
 	}
 
 	@Test
@@ -1356,14 +1356,15 @@ class AnnotationUtilsTests {
 
 	/**
 	 * Mock of {@code org.springframework.web.bind.annotation.PostMapping}, except
-	 * that the path is overridden by convention with single String element.
+	 * that the path is intended to be overridden by convention with single String
+	 * element. However, convention-based annotation attribute overrides are no
+	 * longer supported as of Spring Framework 7.0.
 	 */
 	@Retention(RetentionPolicy.RUNTIME)
 	@WebMapping(method = RequestMethod.POST, name = "")
 	@interface Post {
 
-		// Do NOT use @AliasFor here until Spring 6.1
-		// @AliasFor(annotation = WebMapping.class)
+		// Do NOT use @AliasFor here
 		String path() default "";
 	}
 

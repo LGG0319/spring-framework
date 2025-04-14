@@ -11,7 +11,7 @@ apply plugin: "kotlin"
 apply plugin: "kotlinx-serialization"
 
 multiRelease {
-	releaseVersions 21
+	releaseVersions 21, 24
 }
 
 def javapoetVersion = "1.13.0"
@@ -20,45 +20,46 @@ def objenesisVersion = "3.4"
 configurations {
 	java21Api.extendsFrom(api)
 	java21Implementation.extendsFrom(implementation)
+	java24Api.extendsFrom(api)
 	javapoet
 	objenesis
 	graalvm
 }
 
-task javapoetRepackJar(type: ShadowJar) {
+tasks.register('javapoetRepackJar', ShadowJar) {
 	archiveBaseName = 'spring-javapoet-repack'
 	archiveVersion = javapoetVersion
 	configurations = [project.configurations.javapoet]
 	relocate('com.squareup.javapoet', 'org.springframework.javapoet')
 }
 
-task javapoetSource(type: ShadowSource) {
+tasks.register('javapoetSource', ShadowSource) {
 	configurations = [project.configurations.javapoet]
 	relocate('com.squareup.javapoet', 'org.springframework.javapoet')
 	outputDirectory = file("build/shadow-source/javapoet")
 }
 
-task javapoetSourceJar(type: Jar) {
+tasks.register('javapoetSourceJar', Jar) {
 	archiveBaseName = 'spring-javapoet-repack'
 	archiveVersion = javapoetVersion
 	archiveClassifier = 'sources'
 	from javapoetSource
 }
 
-task objenesisRepackJar(type: ShadowJar) {
+tasks.register('objenesisRepackJar', ShadowJar) {
 	archiveBaseName = 'spring-objenesis-repack'
 	archiveVersion = objenesisVersion
 	configurations = [project.configurations.objenesis]
 	relocate('org.objenesis', 'org.springframework.objenesis')
 }
 
-task objenesisSource(type: ShadowSource) {
+tasks.register('objenesisSource', ShadowSource) {
 	configurations = [project.configurations.objenesis]
 	relocate('org.objenesis', 'org.springframework.objenesis')
 	outputDirectory = file("build/shadow-source/objenesis")
 }
 
-task objenesisSourceJar(type: Jar) {
+tasks.register('objenesisSourceJar', Jar) {
 	archiveBaseName = 'spring-objenesis-repack'
 	archiveVersion = objenesisVersion
 	archiveClassifier = 'sources'

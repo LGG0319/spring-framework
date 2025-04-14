@@ -461,7 +461,7 @@ class GenericTypeResolverTests {
 		}
 	}
 
-	public interface InterfaceWithDefaultMethod<T extends InheritsDefaultMethod.AbstractType> {
+	public interface InterfaceWithDefaultMethod<T extends InterfaceWithDefaultMethod.AbstractType> {
 
 		default String get(T input) {
 			throw new UnsupportedOperationException();
@@ -473,7 +473,7 @@ class GenericTypeResolverTests {
 
 	public static class InheritsDefaultMethod implements InterfaceWithDefaultMethod<InheritsDefaultMethod.ConcreteType> {
 
-		static class ConcreteType implements AbstractType {
+		static class ConcreteType implements InterfaceWithDefaultMethod.AbstractType {
 		}
 	}
 

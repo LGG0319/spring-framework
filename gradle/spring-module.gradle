@@ -13,7 +13,7 @@ dependencies {
 	jmh 'org.openjdk.jmh:jmh-generator-annprocess:1.37'
 	jmh 'org.openjdk.jmh:jmh-generator-bytecode:1.37'
 	jmh 'net.sf.jopt-simple:jopt-simple'
-	errorprone 'com.uber.nullaway:nullaway:0.12.3'
+	errorprone 'com.uber.nullaway:nullaway:0.12.4'
 	errorprone 'com.google.errorprone:error_prone_core:2.36.0'
 }
 
@@ -87,14 +87,15 @@ javadoc {
 	logging.captureStandardOutput LogLevel.INFO  // suppress "## warnings" message
 }
 
-task sourcesJar(type: Jar, dependsOn: classes) {
+tasks.register('sourcesJar', Jar) {
+	dependsOn classes
 	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 	archiveClassifier.set("sources")
 	from sourceSets.main.allSource
 	// Don't include or exclude anything explicitly by default. See SPR-12085.
 }
 
-task javadocJar(type: Jar) {
+tasks.register('javadocJar', Jar) {
 	archiveClassifier.set("javadoc")
 	from javadoc
 }
@@ -114,14 +115,14 @@ components.java.withVariantsFromConfiguration(configurations.testFixturesApiElem
 components.java.withVariantsFromConfiguration(configurations.testFixturesRuntimeElements) { skip() }
 
 tasks.withType(JavaCompile).configureEach {
-    options.errorprone {
-    	disableAllChecks = true
+	options.errorprone {
+		disableAllChecks = true
 		option("NullAway:OnlyNullMarked", "true")
 		option("NullAway:CustomContractAnnotations", "org.springframework.lang.Contract")
 		option("NullAway:JSpecifyMode", "true")
-    }
+	}
 }
 tasks.compileJava {
-    // The check defaults to a warning, bump it up to an error for the main sources
-    options.errorprone.error("NullAway")
+	// The check defaults to a warning, bump it up to an error for the main sources
+	options.errorprone.error("NullAway")
 }

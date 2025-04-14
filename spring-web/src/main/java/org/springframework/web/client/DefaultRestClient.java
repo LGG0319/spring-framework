@@ -108,6 +108,8 @@ final class DefaultRestClient implements RestClient {
 
 	private final @Nullable MultiValueMap<String, String> defaultCookies;
 
+	private final @Nullable ApiVersionInserter apiVersionInserter;
+
 	private final @Nullable Consumer<RequestHeadersSpec<?>> defaultRequest;
 
 	private final List<StatusHandler> defaultStatusHandlers;
@@ -128,6 +130,7 @@ final class DefaultRestClient implements RestClient {
 			UriBuilderFactory uriBuilderFactory,
 			@Nullable HttpHeaders defaultHeaders,
 			@Nullable MultiValueMap<String, String> defaultCookies,
+			@Nullable ApiVersionInserter apiVersionInserter,
 			@Nullable Consumer<RequestHeadersSpec<?>> defaultRequest,
 			@Nullable List<StatusHandler> statusHandlers,
 			List<HttpMessageConverter<?>> messageConverters,
@@ -142,6 +145,7 @@ final class DefaultRestClient implements RestClient {
 		this.uriBuilderFactory = uriBuilderFactory;
 		this.defaultHeaders = defaultHeaders;
 		this.defaultCookies = defaultCookies;
+		this.apiVersionInserter = apiVersionInserter;
 		this.defaultRequest = defaultRequest;
 		this.defaultStatusHandlers = (statusHandlers != null ? new ArrayList<>(statusHandlers) : new ArrayList<>());
 		this.messageConverters = messageConverters;
@@ -149,6 +153,7 @@ final class DefaultRestClient implements RestClient {
 		this.observationConvention = observationConvention;
 		this.builder = builder;
 	}
+
 
 	@Override
 	public RequestHeadersUriSpec<?> get() {
@@ -282,8 +287,6 @@ final class DefaultRestClient implements RestClient {
 	}
 
 
-
-
 	private class DefaultRequestBodyUriSpec implements RequestBodyUriSpec {
 
 		private final HttpMethod httpMethod;
@@ -293,6 +296,8 @@ final class DefaultRestClient implements RestClient {
 		private @Nullable HttpHeaders headers;
 
 		private @Nullable MultiValueMap<String, String> cookies;
+
+		private @Nullable Object apiVersion;
 
 		private @Nullable InternalBody body;
 
@@ -419,6 +424,12 @@ final class DefaultRestClient implements RestClient {
 		}
 
 		@Override
+		public RequestBodySpec apiVersion(Object version) {
+			this.apiVersion = version;
+			return this;
+		}
+
+		@Override
 		public RequestBodySpec attribute(String name, Object value) {
 			getAttributes().put(name, value);
 			return this;
@@ -516,7 +527,6 @@ final class DefaultRestClient implements RestClient {
 			}
 		}
 
-
 		@Override
 		public ResponseSpec retrieve() {
 			return new DefaultResponseSpec(this);
@@ -525,6 +535,13 @@ final class DefaultRestClient implements RestClient {
 		@Override
 		public <T> @Nullable T exchange(ExchangeFunction<T> exchangeFunction, boolean close) {
 			return exchangeInternal(exchangeFunction, close);
+		}
+
+		@Override
+		public <T> T exchangeForRequiredValue(RequiredValueExchangeFunction<T> exchangeFunction, boolean close) {
+			T value = exchangeInternal(exchangeFunction, close);
+			Assert.state(value != null, "The exchanged value must not be null");
+			return value;
 		}
 
 		private <T> @Nullable T exchangeInternal(ExchangeFunction<T> exchangeFunction, boolean close) {
@@ -591,7 +608,12 @@ final class DefaultRestClient implements RestClient {
 		}
 
 		private URI initUri() {
-			return (this.uri != null ? this.uri : DefaultRestClient.this.uriBuilderFactory.expand(""));
+			URI uriToUse = this.uri != null ? this.uri : DefaultRestClient.this.uriBuilderFactory.expand("");
+			if (this.apiVersion != null) {
+				Assert.state(apiVersionInserter != null, "No ApiVersionInserter configured");
+				uriToUse = apiVersionInserter.insertVersion(this.apiVersion, uriToUse);
+			}
+			return uriToUse;
 		}
 
 		private @Nullable String serializeCookies() {
@@ -630,18 +652,29 @@ final class DefaultRestClient implements RestClient {
 
 		private @Nullable HttpHeaders initHeaders() {
 			HttpHeaders defaultHeaders = DefaultRestClient.this.defaultHeaders;
-			if (this.headers == null || this.headers.isEmpty()) {
-				return defaultHeaders;
+			if (this.apiVersion == null) {
+				if (this.headers == null || this.headers.isEmpty()) {
+					return defaultHeaders;
+				}
+				else if (defaultHeaders == null || defaultHeaders.isEmpty()) {
+					return this.headers;
+				}
 			}
-			else if (defaultHeaders == null || defaultHeaders.isEmpty()) {
-				return this.headers;
-			}
-			else {
-				HttpHeaders result = new HttpHeaders();
+
+			HttpHeaders result = new HttpHeaders();
+			if (defaultHeaders != null) {
 				result.putAll(defaultHeaders);
-				result.putAll(this.headers);
-				return result;
 			}
+			if (this.headers != null) {
+				result.putAll(this.headers);
+			}
+
+			if (this.apiVersion != null) {
+				Assert.state(apiVersionInserter != null, "No ApiVersionInserter configured");
+				apiVersionInserter.insertVersion(this.apiVersion, result);
+			}
+
+			return result;
 		}
 
 		private ClientHttpRequest createRequest(URI uri) throws IOException {
@@ -822,7 +855,6 @@ final class DefaultRestClient implements RestClient {
 				throw new UncheckedIOException(ex);
 			}
 		}
-
 	}
 
 
@@ -870,8 +902,6 @@ final class DefaultRestClient implements RestClient {
 		public void close() {
 			this.delegate.close();
 		}
-
 	}
-
 
 }
