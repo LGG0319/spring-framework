@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2025 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -149,7 +149,7 @@ public class HttpServiceRegistrarTests {
 	}
 
 	private Map<String, HttpServiceGroup> groupMap() {
-		BeanDefinition beanDef = this.beanDefRegistry.getBeanDefinition("httpServiceProxyRegistry");
+		BeanDefinition beanDef = this.beanDefRegistry.getBeanDefinition(AbstractHttpServiceRegistrar.HTTP_SERVICE_PROXY_REGISTRY_BEAN_NAME);
 		assertThat(beanDef.getBeanClassName()).isEqualTo(HttpServiceProxyRegistryFactoryBean.class.getName());
 
 		ConstructorArgumentValues args = beanDef.getConstructorArgumentValues();
@@ -159,7 +159,7 @@ public class HttpServiceRegistrarTests {
 		GroupsMetadata metadata = (GroupsMetadata) valueHolder.getValue();
 		assertThat(metadata).isNotNull();
 
-		return metadata.groups().stream()
+		return metadata.groups(null).stream()
 				.collect(Collectors.toMap(HttpServiceGroup::name, Function.identity()));
 	}
 

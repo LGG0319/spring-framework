@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2025 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,20 +21,32 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 
 import org.junit.jupiter.api.Test;
 
+import org.springframework.aot.test.generate.TestGenerationContext;
+import org.springframework.context.ApplicationContextInitializer;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.aot.ApplicationContextAotGenerator;
+import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.core.test.tools.CompileWithForkedClassLoader;
+import org.springframework.core.test.tools.Compiled;
+import org.springframework.core.test.tools.TestCompiler;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.web.service.registry.HttpServiceGroup.ClientType;
 import org.springframework.web.service.registry.echo.EchoA;
 import org.springframework.web.service.registry.echo.EchoB;
 import org.springframework.web.service.registry.greeting.GreetingA;
+import org.springframework.web.service.registry.greeting.GreetingB;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit tests for {@link AnnotationHttpServiceRegistrar}.
+ * Tests for {@link AnnotationHttpServiceRegistrar}.
+ *
  * @author Rossen Stoyanchev
+ * @author Stephane Nicoll
  */
 public class AnnotationHttpServiceRegistrarTests {
 
@@ -55,11 +67,38 @@ public class AnnotationHttpServiceRegistrarTests {
 	}
 
 	@Test
+	@CompileWithForkedClassLoader
+	void basicListingWithAot() {
+		GenericApplicationContext applicationContext = new AnnotationConfigApplicationContext();
+		applicationContext.registerBean(ListingConfig.class);
+		compile(applicationContext, (initializer, compiled) -> {
+			GenericApplicationContext freshApplicationContext = toFreshApplicationContext(initializer);
+			HttpServiceProxyRegistry registry = freshApplicationContext.getBean(HttpServiceProxyRegistry.class);
+			assertThat(registry.getGroupNames()).containsOnly(ECHO_GROUP);
+			assertThat(registry.getClientTypesInGroup(ECHO_GROUP)).containsOnly(EchoA.class, EchoB.class);
+		});
+	}
+
+	@Test
 	void basicScan() {
 		doRegister(ScanConfig.class);
 		assertGroups(
 				StubGroup.ofPackageClasses(ECHO_GROUP, EchoA.class),
 				StubGroup.ofPackageClasses(GREETING_GROUP, GreetingA.class));
+	}
+
+	@Test
+	@CompileWithForkedClassLoader
+	void basicScanWithAot() {
+		GenericApplicationContext applicationContext = new AnnotationConfigApplicationContext();
+		applicationContext.registerBean(ScanConfig.class);
+		compile(applicationContext, (initializer, compiled) -> {
+			GenericApplicationContext freshApplicationContext = toFreshApplicationContext(initializer);
+			HttpServiceProxyRegistry registry = freshApplicationContext.getBean(HttpServiceProxyRegistry.class);
+			assertThat(registry.getGroupNames()).containsOnly(ECHO_GROUP, GREETING_GROUP);
+			assertThat(registry.getClientTypesInGroup(ECHO_GROUP)).containsOnly(EchoA.class, EchoB.class);
+			assertThat(registry.getClientTypesInGroup(GREETING_GROUP)).containsOnly(GreetingA.class, GreetingB.class);
+		});
 	}
 
 	@Test
@@ -75,6 +114,25 @@ public class AnnotationHttpServiceRegistrarTests {
 		this.registrar.registerHttpServices(this.groupRegistry, metadata);
 	}
 
+	@SuppressWarnings("unchecked")
+	private void compile(GenericApplicationContext applicationContext,
+			BiConsumer<ApplicationContextInitializer<GenericApplicationContext>, Compiled> result) {
+		ApplicationContextAotGenerator generator = new ApplicationContextAotGenerator();
+		TestGenerationContext generationContext = new TestGenerationContext();
+		generator.processAheadOfTime(applicationContext, generationContext);
+		generationContext.writeGeneratedContent();
+		TestCompiler.forSystem().with(generationContext).compile(compiled ->
+				result.accept(compiled.getInstance(ApplicationContextInitializer.class), compiled));
+	}
+
+	private GenericApplicationContext toFreshApplicationContext(
+			ApplicationContextInitializer<GenericApplicationContext> initializer) {
+		GenericApplicationContext freshApplicationContext = new GenericApplicationContext();
+		initializer.initialize(freshApplicationContext);
+		freshApplicationContext.refresh();
+		return freshApplicationContext;
+	}
+
 	private void assertGroups(StubGroup... expectedGroups) {
 		Map<String, StubGroup> groupMap = this.groupRegistry.groupMap();
 		assertThat(groupMap.size()).isEqualTo(expectedGroups.length);
@@ -88,18 +146,18 @@ public class AnnotationHttpServiceRegistrarTests {
 	}
 
 
-	@ImportHttpServices(group = ECHO_GROUP, types = {EchoA.class, EchoB.class})
-	private static class ListingConfig {
+	@ImportHttpServices(group = ECHO_GROUP, types = { EchoA.class, EchoB.class })
+	static class ListingConfig {
 	}
 
-	@ImportHttpServices(group = ECHO_GROUP, basePackageClasses = {EchoA.class})
-	@ImportHttpServices(group = GREETING_GROUP, basePackageClasses = {GreetingA.class})
-	private static class ScanConfig {
+	@ImportHttpServices(group = ECHO_GROUP, basePackageClasses = { EchoA.class })
+	@ImportHttpServices(group = GREETING_GROUP, basePackageClasses = { GreetingA.class })
+	static class ScanConfig {
 	}
 
-	@ImportHttpServices(clientType = ClientType.WEB_CLIENT, group = ECHO_GROUP, types = {EchoA.class})
-	@ImportHttpServices(clientType = ClientType.WEB_CLIENT, group = GREETING_GROUP, types = {GreetingA.class})
-	private static class ClientTypeConfig {
+	@ImportHttpServices(clientType = ClientType.WEB_CLIENT, group = ECHO_GROUP, types = { EchoA.class })
+	@ImportHttpServices(clientType = ClientType.WEB_CLIENT, group = GREETING_GROUP, types = { GreetingA.class })
+	static class ClientTypeConfig {
 	}
 
 
@@ -122,19 +180,12 @@ public class AnnotationHttpServiceRegistrarTests {
 
 		@Override
 		public GroupSpec forGroup(String name, ClientType clientType) {
-			return new TestGroupSpec(name, clientType);
+			return new TestGroupSpec(this.groupMap, name, clientType);
 		}
 
-		private class TestGroupSpec implements GroupSpec {
 
-			private final String groupName;
-
-			private final ClientType clientType;
-
-			public TestGroupSpec(String groupName, ClientType clientType) {
-				this.groupName = groupName;
-				this.clientType = clientType;
-			}
+		private record TestGroupSpec(Map<String, StubGroup> groupMap, String groupName,
+				ClientType clientType) implements GroupSpec {
 
 			@Override
 			public GroupSpec register(Class<?>... serviceTypes) {
@@ -155,7 +206,7 @@ public class AnnotationHttpServiceRegistrarTests {
 			}
 
 			private StubGroup getOrCreateGroup() {
-				return groupMap.computeIfAbsent(this.groupName, name -> new StubGroup(name, this.clientType));
+				return this.groupMap.computeIfAbsent(this.groupName, name -> new StubGroup(name, this.clientType));
 			}
 		}
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2025 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -627,6 +627,17 @@ class UriComponentsBuilderTests {
 						"query", "q=1", "fragment", "foo"))
 				.toUri();
 		assertThat(uri.toString()).isEqualTo("ws://example.org:7777/path?q=1#foo");
+	}
+
+	@ParameterizedTest // gh-34783
+	@EnumSource
+	void parseBuildAndExpandQueryParamWithSameName(ParserType parserType) {
+		UriComponents result = UriComponentsBuilder
+				.fromUriString("/?{pk1}={pv1}&{pk2}={pv2}", parserType)
+				.buildAndExpand("k1", "v1", "k1", "v2");
+
+		assertThat(result.getQuery()).isEqualTo("k1=v1&k1=v2");
+		assertThat(result.getQueryParams()).containsExactly(Map.entry("k1", List.of("v1", "v2")));
 	}
 
 	@ParameterizedTest

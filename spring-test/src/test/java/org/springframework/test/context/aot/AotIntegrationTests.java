@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2025 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -167,7 +167,6 @@ class AotIntegrationTests extends AbstractAotTests {
 	void endToEndTestsForSelectedTestClasses() {
 		List<Class<?>> testClasses = List.of(
 				org.springframework.test.context.bean.override.easymock.EasyMockBeanIntegrationTests.class,
-				org.springframework.test.context.junit4.SpringJUnit4ClassRunnerAppCtxTests.class,
 				org.springframework.test.context.junit4.ParameterizedDependencyInjectionTests.class
 		);
 

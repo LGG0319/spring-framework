@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2025 the original author or authors.
+ * Copyright 2002-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,12 @@
 
 package org.springframework.web.client.support;
 
-import java.io.IOException;
-
-import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServer;
-import okhttp3.mockwebserver.RecordedRequest;
+import mockwebserver3.MockResponse;
+import mockwebserver3.MockWebServer;
+import mockwebserver3.RecordedRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -30,7 +29,9 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.OverridingClassLoader;
 import org.springframework.core.type.AnnotationMetadata;
+import org.springframework.util.ClassUtils;
 import org.springframework.web.service.registry.AbstractHttpServiceRegistrar;
 import org.springframework.web.service.registry.HttpServiceProxyRegistry;
 import org.springframework.web.service.registry.ImportHttpServices;
@@ -58,8 +59,8 @@ public class RestClientProxyRegistryIntegrationTests {
 	}
 
 	@AfterEach
-	void shutdown() throws IOException {
-		this.server.shutdown();
+	void shutdown() {
+		this.server.close();
 	}
 
 
@@ -86,7 +87,7 @@ public class RestClientProxyRegistryIntegrationTests {
 		assertThat(registry.getClient(GreetingB.class)).isSameAs(greetingB);
 
 		for (int i = 0; i < 4; i++) {
-			this.server.enqueue(new MockResponse().setBody("body"));
+			this.server.enqueue(new MockResponse.Builder().body("body").build());
 		}
 
 		echoA.handle("a");
@@ -94,31 +95,48 @@ public class RestClientProxyRegistryIntegrationTests {
 
 		RecordedRequest request = this.server.takeRequest();
 		assertThat(request.getMethod()).isEqualTo("GET");
-		assertThat(request.getPath()).isEqualTo("/echoA?input=a");
+		assertThat(request.getTarget()).isEqualTo("/echoA?input=a");
 
 		request = this.server.takeRequest();
 		assertThat(request.getMethod()).isEqualTo("GET");
-		assertThat(request.getPath()).isEqualTo("/echoB?input=b");
+		assertThat(request.getTarget()).isEqualTo("/echoB?input=b");
 
 		greetingA.handle("a");
 		greetingB.handle("b");
 
 		request = this.server.takeRequest();
 		assertThat(request.getMethod()).isEqualTo("GET");
-		assertThat(request.getPath()).isEqualTo("/greetingA?input=a");
+		assertThat(request.getTarget()).isEqualTo("/greetingA?input=a");
 
 		request = this.server.takeRequest();
 		assertThat(request.getMethod()).isEqualTo("GET");
-		assertThat(request.getPath()).isEqualTo("/greetingB?input=b");
+		assertThat(request.getTarget()).isEqualTo("/greetingB?input=b");
 	}
 
+	@Test
+	void beansAreCreatedUsingBeanClassLoader() {
+		ClassLoader beanClassLoader = new OverridingClassLoader(getClass().getClassLoader()) {
+
+			protected boolean isEligibleForOverriding(String className) {
+				return className.contains("EchoA");
+			};
+		};
+
+		AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+		context.setClassLoader(beanClassLoader);
+		context.register(ClassUtils.resolveClassName(ListingConfig.class.getName(), beanClassLoader));
+		context.refresh();
+
+		Class<?> echoClass = ClassUtils.resolveClassName(EchoA.class.getName(), beanClassLoader);
+		assertThat(context.getBean(echoClass).getClass().getClassLoader()).isSameAs(beanClassLoader);
+	}
 
 	private static class ClientConfig {
 
 		@Bean
 		public RestClientHttpServiceGroupConfigurer groupConfigurer() {
 			return groups -> groups.filterByName("echo", "greeting")
-					.configureClient((group, builder) -> builder.baseUrl("http://localhost:9090"));
+					.forEachClient((group, builder) -> builder.baseUrl("http://localhost:9090"));
 		}
 	}
 
