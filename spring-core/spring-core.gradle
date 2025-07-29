@@ -2,7 +2,7 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.springframework.build.shadow.ShadowSource
 
 plugins {
-	id 'me.champeau.mrjar'
+	id 'org.springframework.build.multiReleaseJar'
 }
 
 description = "Spring Core"
@@ -132,7 +132,7 @@ test {
 	// Ensure that BlockHound tests run on JDK 13+. For details, see:
 	// https://github.com/reactor/BlockHound/issues/33
 	jvmArgs += [
-		"-XX:+AllowRedefinitionToAddDeleteMethods"
+			"-XX:+AllowRedefinitionToAddDeleteMethods"
 	]
 }
 
