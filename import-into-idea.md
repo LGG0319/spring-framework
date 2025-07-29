@@ -53,5 +53,22 @@ A. Keep an eye on https://youtrack.jetbrains.com/issue/IDEA-53476
 ## 4.  For more information, please refer to https://docs.gradle.org/8.8/userguide/validation_problems.html#input_file_does_not_exist in the Gradle documentation.
     
     
+## 5. java: 找不到符号
+    符号:   类 JtaAnnotationTransactionAspect
+    位置: 类 org.springframework.transaction.aspectj.AspectJJtaTransactionManagementConfiguration
+    
+    解决方式：删除aspect main 下的包文件
+
+## 6. java: 程序包org.springframework.ui.freemarker不存在
+    重新编译 spring-webmvc
+
+## 7. java: java.lang.ExceptionInInitializerError
+    com.sun.tools.javac.code.TypeTag :: UNKNOWN
+
+## 8. kotlin 报错
+    重新将tx 模块下的包文件挂载
+
+## 9. java: 程序包org.springframework.oxm不存在
+
 
 
